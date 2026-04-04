@@ -1,7 +1,8 @@
 """farkle.py // simple text farkle game"""
 
+from time import sleep
 #positions = ["   [  1  ]   ", "   [  2  ]   ", "   [  3  ]   ", "   [  4  ]   ", "   [  5  ]   ", "   [  6  ]   "]
-positions = "   [  1  ]      [  2  ]      [  3  ]      [  4  ]      [  5  ]      [  6  ]   "
+positions = "[  1  ]      [  2  ]      [  3  ]      [  4  ]      [  5  ]      [  6  ]"
 END = "\033[0m"
 HIDE = "\033[?25l"
 SHOW = "\033[?25h"
@@ -13,6 +14,118 @@ colours = {
     "magenta": "\033[1;35m",
     "cyan": "\033[1;36m",
 }
+
+export_data = True
+
+class outputter:
+
+    def __init__(self):
+        from uuid import uuid4
+        self.session_ID:str = str(uuid4())[-6:]
+        self.turn_data = {}
+        self.game_data = {}
+
+    def start_game(self):
+
+        self.game_data = {self.session_ID: {0: {}}}
+
+
+    def output_gamedata(self, player, turn = None, end_game=False):
+
+        data = self.turn_data
+
+        """
+        if not self.game_data or not self.game_data.get(self.session_ID):
+            self.start_game()
+
+        print(f"self.game_data[self.session_ID]: {self.game_data[self.session_ID]}\n\n")
+        if not self.game_data[self.session_ID].get(players.total_games):
+            self.game_data[self.session_ID][players.total_games] = self.turn_data
+
+        elif not turn:
+            for turn in self.turn_data:
+                self.game_data[self.session_ID][players.total_games].update(self.turn_data)
+
+        else:
+            if self.game_data[self.session_ID][players.total_games].get(turn):
+                self.game_data[self.session_ID][players.total_games][turn].update(self.turn_data.get(turn))
+            else:
+                self.game_data[self.session_ID][players.total_games][turn] = self.turn_data.get(turn)
+        """
+        import json
+        file = r"D:\Git_Repos\farkle\farkle.json"
+
+        with open(file, "r") as f:
+            farkle_file = json.load(f)
+
+        gamedata = self.game_data.copy()
+
+        if farkle_file:
+            for entry in farkle_file:
+                if entry and entry != self.session_ID:
+                    gamedata[entry] = farkle_file[entry]
+
+        if end_game:
+            gamedata[self.session_ID][players.total_games]["game_score"] = {players.current.name: players.current.game_score, players.opponent.name: players.opponent.game_score}
+
+
+        """
+        if not farkle_file.get(self.session_ID):
+            farkle_file[self.session_ID] = dict({players.total_games: data})
+
+        if farkle_file[self.session_ID].get(players.total_games):
+            for turn in data:
+                if farkle_file[self.session_ID][players.total_games].get(turn):
+                    farkle_file[self.session_ID][players.total_games][turn].update(data[turn])
+                else:
+                    farkle_file[self.session_ID][players.total_games][turn] = data[turn]
+
+        else:
+            farkle_file[self.session_ID][players.total_games] = data
+
+"""
+        with open(file, "w") as f:
+            json.dump(gamedata, f, indent=2)
+
+
+    def collect_turndata(self, player, matches=None, dice=None, bust=False, turn_end=None, game_end=False):
+
+        """
+            {total_turns}: {
+                player: {player.name},
+                rolls: [{matches}]
+                turn_end_score: {turn_score: game_score}
+            }
+
+        """
+        write_turn_data = False#True
+
+        if dice:
+            if not isinstance(dice, list|set|tuple):
+                dice = list(dice)
+
+        if self.turn_data and self.turn_data.get(players.total_turns):
+            current_data = self.turn_data[players.total_turns]
+        else:
+            self.turn_data[players.total_turns] = {"player": player.name, "rolls": []}
+            current_data = self.turn_data[players.total_turns]
+
+        if matches:
+            current_data["rolls"].append({"Dice": list(i.value for i in dice), "matches": matches})
+
+        if bust:
+            current_data["rolls"].append({"Dice": list(i.value for i in dice), "matches": "BUST"})
+            current_data["turn_end_score"] = {0: player.game_score}
+
+        if turn_end:
+            current_data["turn_end_score"] = {player.turn_score: player.game_score}
+            if write_turn_data:
+                self.output_gamedata(player)
+
+        self.game_data.setdefault(self.session_ID, {}).setdefault(players.total_games, {}).setdefault(players.total_turns, current_data)
+
+        if game_end:
+            self.output_gamedata(player, end_game=True)
 
 
 class pos_data:
@@ -29,6 +142,7 @@ class pos_data:
         import shutil
         size = shutil.get_terminal_size()
         self.lines = size.lines - 2
+        self.columns = size.columns
 
         self.lines = size.lines - 2 # for clearing full terminal
 
@@ -38,8 +152,11 @@ class pos_data:
 
         last_pos = 0
 
+        centred_dice = int((self.columns - len(positions))/2)-1
+        centred_dice = (" " * centred_dice) + positions + (" " * centred_dice)
+
         for i in range(1, 7):
-            last_pos = positions.find(str("["), last_pos + 1)
+            last_pos = centred_dice.find(str("["), last_pos + 1)
             self.dice_pos.setdefault(i, last_pos)
 
         self.pos:dict = dict()
@@ -60,17 +177,18 @@ class pos_data:
 
     def print_points(self, text):
 
-        text = self.points_line + text + self.clearline + END
+        centred_text = int((self.columns - len(text))/2)-1
+        centred_text = (" " * centred_text) + text + (" " * centred_text)
+        text = self.points_line + centred_text + self.clearline + END
         print(text, end = '')
 
 
     def print_dice(self, text='', die=None, skin=''):
 
         skin = colours[skin] if colours.get(skin) else skin
-        #print(HIDE, end='')
-        if die:
-            #print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nprint dice line: {self.dice_line.replace('\033', '')}")#\nPrinting dice for die at position {die.place_no} using\nself.dice_pos.get(die.place_no): {self.dice_pos.get(die.place_no)}")
-            temp = self.dice_line.replace("7f", f"{self.dice_pos.get(die.place_no) + 7}f")
+        #print(HIDE, end='') # 34
+        if die:#"                                [  1  ]      [  2  ]      [  3  ]      [  4  ]      [  5  ]      [  6  ]"
+            temp = self.dice_line.replace("7f", f"{self.dice_pos.get(die.place_no)}f")
 
         if isinstance(text, list):
             text = ''.join(text)
@@ -83,7 +201,9 @@ class pos_data:
 
     def print_prompt(self, text):
 
-        text = self.prompt_line + text + self.clearline + END
+        centred_text = int((self.columns - len(text))/2)-1
+        centred_text = (" " * centred_text) + text + (" " * centred_text)
+        text = self.prompt_line + centred_text + self.clearline + END
         print(text, end = '')
 
 
@@ -91,35 +211,18 @@ class pos_data:
 
         print(f"{self.input_line}", end='')
         #print("\033[0J")
-        text = self.input_line + text + self.clearline + END
+        text = self.input_line + "           " + text + self.clearline + END
         print(text, end = '')
 
 
     def print_output(self, text):
+
         print(f"{self.output_line}{self.clearline}")#self.output_line + text + self.clearline + END)
-        text = self.output_line + "\033[2;36m"+ "  [  " + text + "  ]" + END
+        centred_text = int((self.columns - len(text))/2)-1
+        centred_text = (" " * centred_text) + "[  " + text + "  ]" + (" " * centred_text)
+        text = self.output_line + "\033[2;36m" + centred_text + END
         print(text)
-        print(self.clearline, end='')
-    """
-    layout:
-
-    error_lines = 4 lines designated for other printing, either above or below the following. Used for log prints so I don't have to externalise them. Maybe.
-
-    dice_line   [  1  ]      [  1  ]      [  1  ]      [  1  ]      [  1  ]      [  1  ]
-
-    prompt_line ["enter what you want to hold" / "do you want to take this score or roll again"]
-
-    input_line ____
-
-    output_line ['Scoring... ' / 'if you take, you will get x points' / 'ended the round with x points' / 'BUST!']
-    """
-
-
-    """self.position_str = str(positions)
-
-    self.pos.setdefault(i, last_pos)
-    #self.pos.setdefault(i, self.position_str.find(str(i), last_pos))
-    print(f"self.pos: {self.pos}")"""
+        #print(self.clearline, end='')
 
 
 def make_play_area():
@@ -127,16 +230,13 @@ def make_play_area():
     import os
     os.system("cls")
 
-
     #print("\033[s", end='')
     #print("\033[6n", end='') # reports current cursor position
 
-    #error_lines = list(str(i) for i in range(1,6))
     error_line = "0"
     error = f"\033[{int(error_line)};1f"
     start_line = "6" # before this is space for errors
 
-    # this is now how much it adds to error line, not the actual line no.
     points = f"\033[{int(start_line)};1f\033[2;32m"
     dice_str = f"\033[{int(start_line) + 3};7f"
     prompt = f"\033[{int(start_line) + 6};1f"
@@ -181,50 +281,41 @@ class dice_data:
 
         self.skin = None
         self.dice:set[die] = set()
-        self.by_no:dict[str, die] = {die.place_no: die for die in self.dice}
+        self.by_no:dict[int, die] = {} # by_no is int, not str
         self.held_dice:set[die] = set()
+
 
     def init_dice(self):
 
         for i in range(1, 7):
             self.dice.add(die(place_number=i, skin=self.skin))
         self.by_no = {die.place_no: die for die in self.dice}
-        #for i in range(1, 7):
-            #print(f"i: {i} // self.by_no[i]: {self.by_no[i]} ")
 
-    def print_updated(self, die = None):
 
-        def print_die(die):
+    def print_updated(self, die = None, skin = None):
+
+        def print_die(die, skin):
             if isinstance(die, int):
                 die = self.by_no[i]
-            die_skin = die.skin if die.skin else colours.get("red") # should allow for per-die skin, as well as default skin (which can be set by dice set on init or by player)
-            if die.held:
-                die_skin = colours.get("green") # green for held dice
-                die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
-            elif die.used:
-                die_skin = colours.get("yellow")
-            #else:
-                #die_skin = colours.get("red") # red for unheld dice
+            if skin:
+                die_skin = skin# red for unheld dice
+            else:
+                die_skin = die.skin if die.skin else colours.get("red") # should allow for per-die skin, as well as default skin (which can be set by dice set on init or by player)
+                if die.held:
+                    die_skin = colours.get("green") # green for held dice
+                    die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
+                elif die.used:
+                    die_skin = colours.get("yellow")
+
             pos.print_dice(text = f"[  {die.value}  ]", die=die, skin=die_skin)
+            sleep(.01)
 
-
-        #if is_repeat:
-        #    MOVE_UP = "\033[2A" # moves cursor up one line, so the next print will overwrite the previous line. ~~animation~~
-        #else:
-        #    MOVE_UP = ""
-        #print(MOVE_UP, end='')
-        #dice_printing = []
-        #skin = die.skin if die and die.skin else self.skin if self.skin else colours.get("red")
         if not die:
             for i in range(1, 7):
-                print_die(i)
+                print_die(i, skin)
 
         else:
-            print_die(die)
-            #pos.print_dice(text = f"   [  {die.value}  ]", die=die, skin=die.skin)
-
-            #print(f"{die_skin}   [  {die.value}  ]   ", end='')
-        #pos.print_dice(dice_printing)
+            print_die(die, skin)
 
 
     def set_default_val(self):
@@ -236,10 +327,11 @@ class dice_data:
 
             die.place_no = die.value = val # place 1-6 in that order
             val += 1
-        dice.print_updated()
+            dice.print_updated(die, skin="magenta")
+            sleep(.03)
 
     def auto_best(self):
-        pos.print_error("AUTO_BEST")
+        #pos.print_error("AUTO_BEST")
         matches = {}
         used_dice = set()
 
@@ -253,7 +345,7 @@ class dice_data:
                     used_dice = die_set
                     matches["full house"] = ({1: {count: 1500}})
         elif len(vals) >= 5:
-            pos.print_error(f"VALS: {vals}", 1)
+            #pos.print_error(f"VALS: {vals}", 1)
             small_straight = list(i for i in (1, 2, 3, 4, 5) if i in vals)
             if not small_straight or (small_straight and len(small_straight) < 5):
                 small_straight = list(i for i in (2, 3, 4, 5, 6) if i in vals)
@@ -281,8 +373,11 @@ class dice_data:
                     matches["single fives"] = ({item: {count: int(50 * count)}})
 
 
-        pos.print_error(f"MATCHES: {matches}", 2)
+        #pos.print_error(f"MATCHES: {matches}", 2)
+
         if matches:
+            to_json.collect_turndata(players.current, matches, dice=used_dice)
+
             best_option = None
             best_value = 0
             for category in matches:
@@ -297,11 +392,11 @@ class dice_data:
                             extra = f" with {count} {item}'s"
                     elif value == best_value:
                         best_option = best_option + " / " + category
-            pos.print_error(f"Best option: `{best_option}`{extra} for {best_value} points.", 3)
+            #pos.print_error(f"Best option: `{best_option}`{extra} for {best_value} points.", 3)
 
         if not matches:
+            to_json.collect_turndata(players.current, dice=die_set, bust=True)
             pos.print_output(f"BUST! Ending {players.current.name}'s turn.")
-            from time import sleep
             sleep(.8)
             return False, None
 
@@ -310,7 +405,7 @@ class dice_data:
 
 
     def dice_potential(self, starting=False):
-        pos.print_error(f"DICE POTENTIAL")
+        #pos.print_error(f"DICE POTENTIAL")
         matches = {}
         if starting:
             dice_selection = "dice"
@@ -334,7 +429,7 @@ class dice_data:
         if len(vals) == 6:
             matches["full house"] = ({item: {count: 1500}})
         elif len(vals) == 5:
-            pos.print_error(f"VALS: {vals}", 1)
+            #pos.print_error(f"VALS: {vals}", 1)
             small_straight = list(i for i in (1, 2, 3, 4, 5) if i in vals)
             if not small_straight or (small_straight and len(small_straight) < 5):
                 small_straight = list(i for i in (2, 3, 4, 5, 6) if i in vals)
@@ -342,7 +437,7 @@ class dice_data:
             #if all(i for i in ("1", "2", "3", "4", "5") if i in vals) or all(i for i in vals in ("2", "3", "4", "5", "6")):
                 matches["small straight"] = ({item: {count: 750}})
 
-        pos.print_error(f"MATCHES: {matches}", 2)
+        #pos.print_error(f"MATCHES: {matches}", 2)
         if matches:
             best_option = None
             best_value = 0
@@ -359,12 +454,11 @@ class dice_data:
                             extra = f" with {count} {item}'s"
                     elif value == best_value:
                         best_option = best_option + " / " + category
-            pos.print_error(f"Best option: `{best_option}`{extra} for {best_value} points.", 3)
+            #pos.print_error(f"Best option: `{best_option}`{extra} for {best_value} points.", 3)
 
         if not matches:
             if starting:
                 pos.print_output("BUST! Ending turn.")
-                from time import sleep
                 sleep(.8)
                 return False
             else:
@@ -375,7 +469,6 @@ class dice_data:
         return True
 
     def roll(self):
-        from time import sleep
         import random
         count = 0
         for die in self.dice:
@@ -433,7 +526,7 @@ class playerInst:
         return f"[(player: {self.name} // held_score: {self.held_dice} // turn_score: {self.turn_score})]"
 
 def clear_screen(limited=False):
-    from time import sleep
+
     sleep(.3)
     print(f"\033[H{HIDE}", end='')
     for i in range(pos.lines):
@@ -441,9 +534,12 @@ def clear_screen(limited=False):
             if f"[{i-1};" in pos.output_line:
                 break
 
-        #if f"[{i};" in pos.output_line:
         print("\033[2K")
         sleep(0.05)
+
+    if not limited:
+        import os
+        os.system("cls")
     #pos.print_dice(text=" "* len(positions))
     sleep(.3)
 
@@ -455,6 +551,7 @@ class playerClass:
         self.opponent:playerInst = None
         self.autoplay = True
 
+        self.total_games:int = int()
         self.total_turns:int = int()
         self.tally:dict[int, str] = {}
 
@@ -464,9 +561,7 @@ class playerClass:
     def switch_players(self):
         self.current, self.opponent = self.opponent, self.current
         clear_screen(limited=True)
-        from time import sleep
         sleep(.3)
-
 
 
 def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red", player2_col = "blue", single_player=True):
@@ -506,10 +601,12 @@ def get_dice_by_val(i, val, player, in_loop:set[die]):
     return in_loop
 
 def get_score(player, autoplay_dice=None):
+
     if autoplay_dice:
         dice_selection = set(autoplay_dice)
     else:
-        dice_selection = dice.held_dice
+        dice_selection = dice.held_dice # Not used anymore, will remove later.
+
     held_score = 0
     vals = set(i.value for i in dice_selection)
 
@@ -528,8 +625,8 @@ def get_score(player, autoplay_dice=None):
 #        if (all("1", "2", "3", "4", "5") in vals):
         else:
             matched = list(i for i in (2, 3, 4, 5, 6) if i in vals)
-            if matched:
-                pos.print_error(f"matched 2-6")
+            #if matched:
+                #pos.print_error(f"matched 2-6")
         if matched and len(matched) == 5:
             used_dice.update(set(i for i in dice_selection if len(used_dice) < 5 and i.value in vals and i not in used_dice))#(2, 3, 4, 5, 6) if i in vals)#die for die in dice_selection if die.value == item and die not in used_dice)
         #elif (all("2", "3", "4", "5", "6") in vals):
@@ -545,11 +642,11 @@ def get_score(player, autoplay_dice=None):
                 held_score += item * 100 * (2 ** (count - 3))
         elif count:
             if item == 1:
-                pos.print_error(f"item == 1", 1)
+                #pos.print_error(f"item == 1", 1)
                 used_dice.update(set(i for i in dice_selection if i.value == item and i not in used_dice))
                 held_score += 100 * count
             elif item == 5:
-                pos.print_error(f"item == 5", 2)
+                #pos.print_error(f"item == 5", 2)
                 used_dice.update(set(i for i in dice_selection if i.value == item and i not in used_dice))
                 held_score += 50 * count
 
@@ -567,23 +664,27 @@ def clear_held_and_used():
 
 def round_over(winner:playerInst):
     pos.print_output(f"Round over! {winner.name} wins with a score of {winner.game_score}!")
-    from time import sleep
     sleep(.8)
     winner.wins += 1
     players.opponent.losses += 1
+    to_json.collect_turndata(player=winner, game_end=True)
+    players.total_games += 1
     clear_held_and_used()
-
     for player in (winner, players.opponent):
         player.game_score = 0
         player.turn_score = 0
         player.turn_count = 0
     players.total_turns = 0
 
+    players.tally = {}
+
+    clear_screen()
+
     return
 
 def update_tally():
-    pos.print_error(f"updating tally for {players.current.name}")
-    #print(fr"{pos.tally_orig} in str(pos.tally): {True if pos.tally_orig in pos.tally else False}")
+    #pos.print_error(f"updating tally for {players.current.name}")
+
     players.tally[players.total_turns] = (players.current.name, players.current.game_score)
     count = int(pos.tally)
     column = 4
@@ -595,9 +696,11 @@ def update_tally():
         if count == pos.tally_orig:
             count = int(pos.tally)
             column = column + 32
+            if column +30 >= pos.columns:
+                column = 4
         print(f"\033[{count};{column}f\033[2;32mTurn {i}: {name} = {score}")
         count = count + 1
-        pos.print_error(f"printed tally for {players.current.name} at count {count}, column {column}", 2)
+        #pos.print_error(f"printed tally for {players.current.name} at count {count}, column {column}", 2)
     print(END, end='')
 
 
@@ -605,7 +708,6 @@ def end_turn(player:playerInst):
 
     clear_held_and_used()
     pos.print_output(f"Player {player.name} ends their turn with a score of {player.game_score}.")
-    from time import sleep
     sleep(.8)
     if player.game_score > 4000:
         round_over(winner=player)
@@ -629,12 +731,13 @@ def do_roll():
         for die in used:
             die.used = False
 
-    #mark_used(in_loop)
     dice.roll()
 
 def take_roll(player:playerInst):
 
     player.game_score += player.turn_score
+    if export_data:
+        to_json.collect_turndata(player, turn_end=True)
     if end_turn(player):
         return "game over"
 
@@ -645,7 +748,7 @@ def autoplay(player:playerInst):
         dice.print_updated()
         pos.print_output("Getting score...")
         has_potential, used_dice = dice.auto_best()
-        pos.print_error(f"HAS POTENTIAL: {has_potential}")# USED DICE: {used_dice}")
+        #pos.print_error(f"HAS POTENTIAL: {has_potential}")# USED DICE: {used_dice}")
         #has_potential = dice.dice_potential(starting=True)
         if not has_potential:
             #player.game_score = 0#+= player.turn_score
@@ -657,7 +760,6 @@ def autoplay(player:playerInst):
             i.held = True
 
         dice.print_updated()
-        from time import sleep
         sleep(.4)
         score, used_dice = get_score(player, used_dice)
 
@@ -670,12 +772,10 @@ def autoplay(player:playerInst):
 
         sleep(.8)
         if used_dice_count < 4:
-            #player.turn_score += score
             do_roll()
             pos.print_output("Roll done, checking for potential...")
         else:
             sleep(.5)
-            #player.turn_score += score
             return take_roll(player)
 
 
@@ -684,18 +784,15 @@ def play_turn(player:playerInst):
     opponent = players.opponent
     #print(f"{pos.error_line}OPPONENT: {opponent} / name: {opponent}")
 
-    #print(f"set die to defaults for player {player.name}")
     if player.skin:
         dice.skin = player.skin
     else:
         dice.skin = ""
     player.turn_count += 1
-    pos.print_points(f"        Current turn: {player.turn_count}  Current player: {player.name}. {player.name} has {player.game_score} points. Opponent has {opponent.game_score} points.")
+    pos.print_points(f"Current turn: {player.turn_count}  Current player: {player.name}. {player.name} has {player.game_score} points. Opponent has {opponent.game_score} points.")
     pos.print_output(f"{player.name} is rolling...")
     dice.set_default_val()
     dice.print_updated()
-    #from time import sleep
-    #sleep(0.2)
     dice.roll()
 
     """
@@ -704,25 +801,21 @@ def play_turn(player:playerInst):
     """
     in_loop = set()
     while True:
-        if players.autoplay:# and player == players.autoplay:
+        if players.autoplay and ((isinstance(players.autoplay, playerInst) and player == players.autoplay) or isinstance(players.autoplay, bool)):
             return autoplay(player)
 
-        has_potential = dice.dice_potential(starting=True)
+        has_potential, used_dice = dice.auto_best()
+        #has_potential = dice.dice_potential(starting=True)
         if not has_potential:
             player.turn_score = 0
             clear_held_and_used()
             return
 
-        used_dice = [die for die in dice.dice if die.used]
-        #in_loop = set()
-        if len(used_dice) == 6:
-            test = None
-        else:
-            pos.print_prompt("Enter the values of the dice you want to hold. (You can enter multiple values separated by spaces.)")
-            pos.print_input(f">> {SHOW}")
-            test = input()
+        pos.print_prompt("Enter the values of the dice you want to hold. (You can enter multiple values separated by spaces.)")
+        pos.print_input(f"        >> {SHOW}")
+        test = input()
+        print(HIDE)
         if test:
-
             for i, val in enumerate(test.strip().split(" ")):
                 if not val:
                     continue
@@ -733,18 +826,19 @@ def play_turn(player:playerInst):
             dice.print_updated()
 
         else:
-            if has_potential:
-                pos.print_error(f"has_potential: {has_potential} type: {type(has_potential)}")
+            #if has_potential:
+                #pos.print_error(f"has_potential: {has_potential} type: {type(has_potential)}")
 
             pos.print_output(f"{pos.output_line}Getting score...")
+
+            get_score(player, in_loop)
             mark_used(in_loop)
 
             dice.print_updated()
-            get_score(player)
 
             while True:
                 pos.print_prompt(f"Do you want to take the points, or continue rolling? (enter `take` or `roll`)")
-                pos.print_input(">> ")
+                pos.print_input("        >> ")
                 test = input()
                 if test.lower() in ("take", "t"):
                     return take_roll(player)
@@ -758,14 +852,45 @@ def play_turn(player:playerInst):
 def print_wins():
     pos.print_prompt(f"        {players.current.name} has won {players.current.wins} game(s).  {players.opponent.name} has one {players.opponent.wins} game(s).")
 
+
+def pick_player_names():
+
+    pick_names = False#True
+    player1 = "player_1"
+    player2 = "player_2"
+
+    if pick_names:
+        while True:
+            pos.print_input("Enter the name for Player 1: ")
+            player1 = input("        >> ")
+            pos.print_input(f"Is this correct? `{player1}`")
+            test = input("        >> ")
+            if test and test.lower() in ("y", "yes"):
+                break
+
+        while True:
+            pos.print_input("Enter the name for Player 2: ")
+            player2 = input("        >> ")
+            pos.print_input(f"Is this correct? `{player2}`")
+            test = input("        >> ")
+            if test and test.lower() in ("y", "yes"):
+                break
+
+    return player1, player2
+
 def main():
+
+    global to_json
+    to_json = outputter()
 
     make_play_area()
 
-    #for name in ["player_1", "player_2"]: # later can set player names. Just testing for now.
-        #print(f"player: {playerInst(name)}\n")
+    player1, player2 = pick_player_names()
 
-    init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red", player2_col = "blue")
+    import os
+    os.system("cls")
+
+    init_classes(player1, player2, player1_col = "red", player2_col = "blue", single_player=True)
 
     while True:
         players.total_turns += 1
@@ -774,7 +899,7 @@ def main():
             if players.autoplay and isinstance(players.autoplay, bool):
                 test = "yes"
             else:
-                pos.print_input(">> ")
+                pos.print_input("        >> ")
                 test = input()
             if (test and ("n" in test.lower() or "no" in test.lower())) or not test:
                 pos.print_output(f"Alright, goodbye!\n\n\n\n")
@@ -785,37 +910,24 @@ def main():
         else:
             update_tally()
         players.switch_players()
-        from time import sleep
         sleep(0.5)
         pos.print_output(f"Switching players, next up is {players.current.name}...")
-        sleep(1)
-
+        sleep(1.2)
 
 
 main()
-#make_play_area()
+
 """
 need to:
 DONE- hide the cursor when it's 'rolling' the dice.
-- get the positions worked out so it's not a scrolling screen but a static one.
+DONE- get the positions worked out so it's not a scrolling screen but a static one.
 DONE- set up the end of game properly, with score-clearing etc.
-- maybe a basic ui, would be very handy for this.
+kinda done if it counts as a ui - maybe a basic ui, would be very handy for this.
 DONE- need to add per-roll scoring, so it doesn't add single 1s together to get a three-of-a-kind etc. --  - sometimes the scores are wrong, I think perhaps this isn't /entirely/ fixed.
 DONE- also need to be able to make sure singles aren't taken from straights. Only had this issue in the autoplay so far but it's annoying.
-"""
-
-"""
-layout:
-
-diceline   [  1  ]      [  1  ]      [  1  ]      [  1  ]      [  1  ]      [  1  ]
-
-after printing diceline, run
-`ESC[0J`
-to clear the following lines each time.
-
-printline ["enter what you want to hold" / "do you want to take this score or roll again"]
-
-inputline ____
-
-outputline ['Scoring... ' / 'if you take, you will get x points' / 'ended the round with x points' / 'BUST!']
+DONE- clear the tally after a round ends.
+spacing fixed, timing still needs work - fix the spacing/timing on some of the print lines.
+ - Want to add different ai behaviour. So, more strategic, more aggressive, etc.
+ - I'm pretty sure I can use def auto_best(self) to do the calculations for active play/non-autoplay. It's extremely silly having two (or three, depending how you count it) fns for that part.
+ - Still need to add the 'reroll all'.
 """
