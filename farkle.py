@@ -32,9 +32,14 @@ class outputter:
 
     def output_gamedata(self, player, turn = None, end_game=False):
 
-        data = self.turn_data
+        force_no_writing = True
+
+        if force_no_writing:
+            return
 
         """
+        data = self.turn_data
+
         if not self.game_data or not self.game_data.get(self.session_ID):
             self.start_game()
 
@@ -177,10 +182,23 @@ class pos_data:
 
     def print_points(self, text):
 
-        centred_text = int((self.columns - len(text))/2)-1
-        centred_text = (" " * centred_text) + text + (" " * centred_text)
-        text = self.points_line + centred_text + self.clearline + END
-        print(text, end = '')
+        if "\n" in text:
+            text_parts = text.split("\n")
+            #self.print_error(f"text parts: {str(text_parts)}", 3)
+
+            for i, part in enumerate(text_parts):
+                #self.print_error(f"Printing 'part' of text: {part}")
+                centred_text = int((self.columns - len(part))/2)-1
+                centred_text = (" " * centred_text) + part + (" " * centred_text)
+                #self.print_error(f"centred: {centred_text}", 2)
+                text = self.points_line + ("\n" * i) + centred_text + self.clearline + END # will break visually if too many newlines in a string, but works well for single line breaks.
+                print(text, end = '')
+
+        else:
+            centred_text = int((self.columns - len(text))/2)-1
+            centred_text = (" " * centred_text) + text + (" " * centred_text)
+            text = self.points_line + centred_text + self.clearline + END
+            print(text, end = '')
 
 
     def print_dice(self, text='', die=None, skin=''):
@@ -209,9 +227,11 @@ class pos_data:
 
     def print_input(self, text):
 
-        print(f"{self.input_line}", end='')
+        #print(f"{self.input_line}", end='')
         #print("\033[0J")
-        text = self.input_line + "           " + text + self.clearline + END
+        centred_text = int((self.columns - len(text))/2)-1
+        centred_text = (" " * (centred_text - 12)) + text
+        text = self.input_line + "\033[2;36m" + centred_text + self.clearline + END
         print(text, end = '')
 
 
@@ -237,7 +257,7 @@ def make_play_area():
     error = f"\033[{int(error_line)};1f"
     start_line = "6" # before this is space for errors
 
-    points = f"\033[{int(start_line)};1f\033[2;32m"
+    points = f"\033[{int(start_line)-1};1f\033[2;32m"
     dice_str = f"\033[{int(start_line) + 3};7f"
     prompt = f"\033[{int(start_line) + 6};1f"
     inputstr = f"\033[{int(start_line) + 8};1f"
@@ -404,7 +424,7 @@ class dice_data:
             return matches, used_dice#best_value
 
 
-    def dice_potential(self, starting=False):
+    def dice_potential(self, starting=False): # NOT USED ANYMORE. Remove once certain.
         #pos.print_error(f"DICE POTENTIAL")
         matches = {}
         if starting:
@@ -619,11 +639,11 @@ def get_score(player, autoplay_dice=None):
         held_score += 1500
 
     elif len(vals) == 5:
-        matched = list(i for i in (1, 2, 3, 4, 5) if i in vals)
-        if matched and len(matched) == 5:
-            pos.print_error(f"matched 1-5")
+        matched = set(i for i in (1, 2, 3, 4, 5) if i in vals)
+        if not matched or not len(matched) == 5:
+            #pos.print_error(f"matched 1-5")
 #        if (all("1", "2", "3", "4", "5") in vals):
-        else:
+        #else:
             matched = list(i for i in (2, 3, 4, 5, 6) if i in vals)
             #if matched:
                 #pos.print_error(f"matched 2-6")
@@ -789,7 +809,7 @@ def play_turn(player:playerInst):
     else:
         dice.skin = ""
     player.turn_count += 1
-    pos.print_points(f"Current turn: {player.turn_count}  Current player: {player.name}. {player.name} has {player.game_score} points. Opponent has {opponent.game_score} points.")
+    pos.print_points(f"Current turn: {player.turn_count}  Current player: {player.name}. \n{player.name} has {player.game_score} points. {players.opponent.name} has {opponent.game_score} points.")
     pos.print_output(f"{player.name} is rolling...")
     dice.set_default_val()
     dice.print_updated()
@@ -811,13 +831,23 @@ def play_turn(player:playerInst):
             clear_held_and_used()
             return
 
-        pos.print_prompt("Enter the values of the dice you want to hold. (You can enter multiple values separated by spaces.)")
+        if in_loop:
+            pos.print_prompt("Enter more values to add to the selection, or hit enter to take the selected dice.")
+        else:
+            pos.print_prompt("Enter the values of the dice you want to hold.")
         pos.print_input(f"        >> {SHOW}")
         test = input()
         print(HIDE)
         if test:
-            for i, val in enumerate(test.strip().split(" ")):
-                if not val:
+            while test.lower() in ("take", "roll", "t", "r"):
+                pos.print_input(f"        >> {SHOW}")
+                test = input()
+                print(HIDE)
+
+            test = test.replace(" ", "")
+            for i, val in enumerate(list(test)):
+            #for i, val in enumerate(test.strip().split(" ")):
+                if not val or val not in ("1", "2", "3", "4", "5", "6"):
                     continue
                 try:
                     in_loop = get_dice_by_val(i, val, player, in_loop)
@@ -837,10 +867,11 @@ def play_turn(player:playerInst):
             dice.print_updated()
 
             while True:
-                pos.print_prompt(f"Do you want to take the points, or continue rolling? (enter `take` or `roll`)")
-                pos.print_input("        >> ")
+                pos.print_prompt(f"Do you want to take the points, or continue rolling? (enter `take` or `roll`; defaults to `take` if left blank.)")
+                pos.print_input(f"        >> {SHOW}")
                 test = input()
-                if test.lower() in ("take", "t"):
+                print(HIDE, end='')
+                if (test.lower() in ("take", "t")) or not test:
                     return take_roll(player)
 
                 elif test.lower() in ("roll", "r"):
@@ -862,6 +893,7 @@ def pick_player_names():
     if pick_names:
         while True:
             pos.print_input("Enter the name for Player 1: ")
+            print(SHOW)
             player1 = input("        >> ")
             pos.print_input(f"Is this correct? `{player1}`")
             test = input("        >> ")
@@ -875,6 +907,8 @@ def pick_player_names():
             test = input("        >> ")
             if test and test.lower() in ("y", "yes"):
                 break
+
+    print(HIDE)
 
     return player1, player2
 
@@ -893,14 +927,17 @@ def main():
     init_classes(player1, player2, player1_col = "red", player2_col = "blue", single_player=True)
 
     while True:
+        print(HIDE)
         players.total_turns += 1
         if play_turn(players.current):
             pos.print_prompt("Do you want to play again?")
-            if players.autoplay and isinstance(players.autoplay, bool):
+            if players.autoplay and not isinstance(players.autoplay, bool): # only autoplay next round if both players are PC
                 test = "yes"
             else:
                 pos.print_input("        >> ")
+                print(SHOW, end='')
                 test = input()
+                print(HIDE, end='')
             if (test and ("n" in test.lower() or "no" in test.lower())) or not test:
                 pos.print_output(f"Alright, goodbye!\n\n\n\n")
                 break
