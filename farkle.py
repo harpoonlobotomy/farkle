@@ -8,6 +8,7 @@ END = "\033[0m"
 HIDE = "\033[?25l"
 SHOW = "\033[?25h"
 colours = {
+    "white": "\033[0;37m", # not bold because it's too bright otherwise.
     "red": "\033[1;31m",
     "green": "\033[1;32m",
     "yellow": "\033[1;33m",
@@ -56,7 +57,7 @@ class outputter:
             json.dump(gamedata, f, indent=2)
 
 
-    def collect_turndata(self, player, matches=None, dice=None, bust=False, turn_end=None, game_end=False):
+    def collect_turndata(self, player:"playerInst", matches=None, die_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
 
         """
             {total_turns}: {
@@ -71,21 +72,25 @@ class outputter:
         if force_no_writing:
             return
 
-        if dice:
-            if not isinstance(dice, list|set|tuple):
-                dice = list(dice)
+        if die_rolled:
+            if not isinstance(die_rolled, list|set|tuple):
+                die_rolled = list(die_rolled)
+
+        if initial_roll:
+            initial_roll = list(i.value for i in dice.dice)
 
         if self.turn_data and self.turn_data.get(players.total_turns):
             current_data = self.turn_data[players.total_turns]
         else:
-            self.turn_data[players.total_turns] = {"player": player.name, "rolls": []}
+            self.turn_data[players.total_turns] = {"player": player.name, "initial roll": initial_roll, "rolls": {}}
             current_data = self.turn_data[players.total_turns]
 
+
         if matches:
-            current_data["rolls"].append({"Dice": list(i.value for i in dice), "matches": matches})
+            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": matches, "Roll score": roll_score})
 
         if bust:
-            current_data["rolls"].append({"Dice": list(i.value for i in dice), "matches": "BUST"})
+            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": "BUST", "Roll score": roll_score})
             current_data["turn_end_score"] = {0: player.game_score}
 
         if turn_end:
@@ -98,6 +103,23 @@ class outputter:
         if game_end:
             self.output_gamedata(player, end_game=True)
 
+class print_colours:
+
+    def __init__(self):
+        self.output:str = "blue"
+        self.points:str = "green"
+        self.prompt:str = "white"
+        self.pre_diceroll:str = "magenta"
+        self.held_dice:str = "green"
+        self.used_dice:str = "yellow"
+
+    def playernm(self, text, type="output"):
+
+
+        return f"{colours.get()}"
+
+
+print_colour = print_colours()
 
 class pos_data:
     """dice_line / prompt_line / input_line / output_line"""
@@ -201,11 +223,23 @@ class pos_data:
 
     def print_output(self, text, clear=False):
 
+        store_text = ''
         if clear:
             text = print(self.output_line, self.clearline, end='')
             return
         print(f"{self.output_line}{self.clearline}")
+        if "[[" in text:
+            store_text = text
+            text = text.replace("[[", "").replace("]]", "").strip()
+
         centred_text = int((self.columns - len(f"[  {text}  ]"))/2)-1
+        if store_text:
+            import re
+            for m in re.finditer(r"\[\[(\w+)]]", store_text):
+                text = "\033[2;32m" + m.group(1) + "\033[2;36m"
+                store_text = store_text.replace(m.group(0), text)
+                text = store_text
+
         centred_text = (" " * centred_text) + "[  " + text + "  ]"
         text = self.output_line + "\033[2;36m" + centred_text + END
         print(text, end='')
@@ -287,14 +321,19 @@ class dice_data:
             if isinstance(die, int):
                 die = self.by_no[i]
             if skin:
-                die_skin = skin
+                die_skin = colours[skin] if colours.get(skin) else skin
             else:
                 die_skin = die.skin if die.skin else colours.get("red") # should allow for per-die skin, as well as default skin (which can be set by dice set on init or by player)
                 if die.held:
-                    die_skin = colours.get("green") # green for held dice
-                    die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
+                    die_skin = colours.get(print_colour.held_dice) # green for held dice
+                    if "[1m" in die_skin:
+                        die_skin = die_skin.replace("[1m", "[")
+                    #die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
                 elif die.used:
-                    die_skin = colours.get("yellow")
+                    die_skin = colours.get(print_colour.used_dice)
+                    if "[1m" in die_skin:
+                        die_skin = die_skin.replace("[1m", "[")
+                    #die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
 
             pos.print_dice(text = f"[  {die.value}  ]", die=die, skin=die_skin)
             sleep(.01)
@@ -316,7 +355,7 @@ class dice_data:
 
             die.place_no = die.value = val # place 1-6 in that order
             val += 1
-            dice.print_updated(die, skin="magenta")
+            dice.print_updated(die, skin=print_colour.pre_diceroll)
             sleep(.08)
             print()
 
@@ -359,7 +398,7 @@ class dice_data:
                                         turn_score = 50
 
         if use_dice:
-            if think_aloud:
+            if think_aloud and len(available_dice) > 3:
                 sleep(.02)
                 pos.print_prompt(f"I'll reroll the rest; {risk_reason}")
                 sleep(0.5)
@@ -533,8 +572,8 @@ class dice_data:
 
         forced_rolls = {
             #1: [1, 1, 1, 1, 1, 1],
-            1: [1, 1, 1, 1, 1, 2],
-            2: [1, 2, 3, 4, 5, 5],
+            1: [1, 1, 1, 2, 3, 2],
+            2: [1, 1, 1, 4, 5, 6],
             3: [3, 3, 3, 6, 6, 5],
             4: [1, 2, 3, 4, 5, 6],
             5: [5, 5, 5, 5, 5, 5]
@@ -599,6 +638,8 @@ class playerInst:
 
         self.name = player_name
         self.turn_score = 0
+        self.turn_record = {}
+        self.roll_count = 0
         self.skin = skin
         self.turn_count = 0
         self.game_score = 0
@@ -609,7 +650,7 @@ class playerInst:
         self.playstyle = "standard"
 
     def __repr__(self):
-        return f"[(player: {self.name} // held_score: {self.held_dice} // turn_score: {self.turn_score})]"
+        return f"<player: {self.name} // held_score: {self.held_dice} // turn_score: {self.turn_score}>"
 
 def clear_screen(limited=False):
 
@@ -690,13 +731,14 @@ def get_dice_by_val(i, val, player, in_loop:set[die]):
     return in_loop
 
 
-def get_score(player=None, autoplay_dice=None, print_result=True, get_score=True): # if print_result, send roll to json
+def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get_score=True): # if print_result, send roll to json
 
     if autoplay_dice:
         dice_selection = set(autoplay_dice)
     else:
         dice_selection = dice.held_dice # Not used anymore, will remove later.
 
+    matches = {}
     held_score = 0
     vals = set(i.value for i in dice_selection)
 
@@ -706,6 +748,7 @@ def get_score(player=None, autoplay_dice=None, print_result=True, get_score=True
     if len(vals) == 6:
         used_dice = dice_selection
         score_dict = {i:"full house" for i in dice_selection}
+        matches["full house"] = ({1: {1: 1500}}) # I know this isn't what a full house is, but i'm using it like this anyway. It's not used within the game so the term is arbitrary.
         held_score += 1500
 
     elif len(vals) == 5:
@@ -728,6 +771,7 @@ def get_score(player=None, autoplay_dice=None, print_result=True, get_score=True
                             used_dice.add(i)
                             break
             held_score += 750
+            matches["small straight"] = ({"small_straight": {1: 750}})
 
     for item in vals:
         count = sum(1 for die in dice_selection if die.value == item and die not in used_dice)
@@ -747,9 +791,11 @@ def get_score(player=None, autoplay_dice=None, print_result=True, get_score=True
                             multiplier = 2
             if item != 1:
                 held_score += item * (100 * multiplier)
+                matches["three (or four) of a kind"] = ({item: {count: item * (100 * multiplier)}})
             else:
                 #print(f"Match count: {match_count}")
                 held_score += 1000 * (match_count-1)
+                matches["three (or four) of a kind"] = ({item: {count: int(1000 * (match_count-1))}})
 
     remaining_dice_selection = set(i for i in dice_selection if i not in used_dice)
     if remaining_dice_selection:
@@ -763,11 +809,13 @@ def get_score(player=None, autoplay_dice=None, print_result=True, get_score=True
                     used_dice.update(set(i for i in remaining_dice_selection if i.value == item and i not in used_dice and not i.used))
                     #matches["single ones"] = ({item: {count: int(100 * count)}})
                     held_score += 100 * count
+                    matches["single ones"] = ({item: {count: int(100 * count)}})
                 elif item == 5:
                     #pos.print_error(f"item == 5", 2)
                     used_dice.update(set(i for i in remaining_dice_selection if i.value == item and i not in used_dice and not i.used))
                     #matches["single fives"] = ({item: {count: int(50 * count)}})
                     held_score += 50 * count
+                    matches["single fives"] = ({item: {count: int(50 * count)}})
 
     no_playstyle = False#True
     if not no_playstyle:
@@ -776,8 +824,17 @@ def get_score(player=None, autoplay_dice=None, print_result=True, get_score=True
             if updated_dice:
                 used_dice = updated_dice
 
-    if print_result:
-        pos.print_output(f"{player.name} can score {held_score} points here if they choose to take the points, taking their total score to {player.game_score + player.turn_score + held_score}.")
+    if print_result and held_score:
+        pos.print_output(f"{player.name} can score [[{held_score}]] points here if they choose to take the points, taking their total score to [[{player.game_score + player.turn_score + held_score}]].")
+        to_json.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
+
+    if not matches:
+        player.turn_score = 0
+        to_json.collect_turndata(players.current, die_rolled=dice_selection, roll_score=held_score, bust=True)
+        pos.print_output(f"BUST! Ending {players.current.name}'s turn.")
+        print()
+        sleep(.8)
+
     if get_score:
         player.turn_score += held_score
     return held_score, used_dice
@@ -834,11 +891,14 @@ def update_tally():
 
 
 def end_turn(player:playerInst):
-
-    pos.print_output(f"Player {player.name} ends their turn with a score of {player.game_score}.")
+    pos.print_prompt(clear=True)
+    sleep(.05)
+    pos.print_output(f"Player `{print_colour.playernm(player)}` ends their turn with a score of [[{player.game_score}]].")
     sleep(.8)
     print()
     clear_held_and_used()
+    players.current.roll_count = 0
+    players.opponent.roll_count = 0
 
     if player.game_score >= 4000:
         round_over(winner=player)
@@ -861,8 +921,8 @@ def do_roll():
         #pos.print_output("All dice used, resetting for next roll.")
         #for die in used:
             #die.used = False
-
     dice.roll()
+    players.current.roll_count += 1
 
 def take_roll(player:playerInst):
 
@@ -886,10 +946,6 @@ def autoplay(player:playerInst):
         #has_potential = dice.dice_potential(starting=True)
         if not has_potential:
             #player.game_score = 0#+= player.turn_score
-            sleep(.3)
-            pos.print_output(f"BUST! Ending {players.current.name}'s turn.")
-            sleep(.8)
-            print()
             player.turn_score = 0
             clear_held_and_used()
             return end_turn(player)
@@ -902,11 +958,31 @@ def autoplay(player:playerInst):
         score, used_dice = get_score(player, used_dice)
 
         mark_used(used_dice)
-        sleep(.4)
-        pos.print_prompt(" ", clear=True)
 
         used_dice_count = sum(1 for d in dice.dice if d.used)
 
+        if used_dice_count > 3:
+            unused = set(i for i in dice.dice if not i.used)
+            if unused:
+                for i in unused:
+                    if i.value == 5:
+                        player.turn_score += 50
+                        i.used = True
+                        used_dice.add(i)
+                    elif i.value == 1:
+                        player.turn_score += 100
+                        i.used = True
+                        used_dice.add(i)
+
+        used_dice_count = sum(1 for d in dice.dice if d.used)
+
+        sleep(.4)
+        pos.print_prompt(" ", clear=True)
+
+
+        dice.print_updated()
+
+        sleep(.8)
         if (used_dice_count) == 6:
             if player.game_score + player.turn_score >= 4000:
                 pos.print_prompt("All dice used. Taking current score.")
@@ -916,10 +992,8 @@ def autoplay(player:playerInst):
             do_roll()
 
         else:
-            dice.print_updated()
-
-            sleep(.8)
-            if used_dice_count < 4:
+            if (used_dice_count < 4 and (player.game_score + player.turn_score < 4000)) or player.turn_score < 500:
+                pos.print_prompt("Rolling again.")
                 do_roll()
                 #pos.print_output("Roll done, checking for potential...")
             else:
@@ -938,6 +1012,7 @@ def play_turn(player:playerInst):
     dice.set_default_val()
     dice.print_updated()
     dice.roll()
+    to_json.collect_turndata(player, initial_roll=True)
 
     """
     turn_score = int used holding the score of a single turn,  without considering past turns in this game.
@@ -955,10 +1030,6 @@ def play_turn(player:playerInst):
         has_potential, _ = get_score(player, autoplay_dice=die_set, print_result=True if in_loop else False, get_score=False)
         #pos.print_error(f"HAS POTENTIAL: {has_potential}")
         if not has_potential:
-            player.turn_score = 0
-            to_json.collect_turndata(players.current, dice=die_set, bust=True)
-            pos.print_output(f"BUST! Ending {players.current.name}'s turn.")
-            sleep(.3)
             clear_held_and_used()
             return
 
@@ -969,7 +1040,7 @@ def play_turn(player:playerInst):
 
         test = get_input()
         #pos.print_input(f"        >> {SHOW}")
-
+        pos.print_prompt(clear=True)
         if (test or not in_loop) and not len(dice.held_dice) == 6:
             #input("\n\n\n\n\n\ntest or not in_loop (hit enter)")
             while test.lower() in ("take", "roll", "t", "r"):
@@ -1161,7 +1232,7 @@ def main():
     sleep(.2)
     dice.init_dice()
     while True:
-        pos.print_points(f"Current turn: {players.current.turn_count}  Current player: {players.current.name}. \n{players.current.name} has {players.current.game_score} points. {players.opponent.name} has {players.opponent.game_score} points.")
+        pos.print_points(f"Current turn: {players.total_turns + 1}  Current player: {players.current.name}. \n{players.current.name} has {players.current.game_score} points. {players.opponent.name} has {players.opponent.game_score} points.")
         sleep(0.2)
         dice.set_default_val()
         sleep(.5)
@@ -1189,5 +1260,10 @@ main()
 """
 need to:
 
-make sure the autoplay calculations are right. They seem right overall but every now and then I'm surprised by the outcome. Re-implementing roll-by-roll json output so I can analyse.
+DONE - make sure the autoplay calculations are right. They seem right overall but every now and then I'm surprised by the outcome. Re-implementing roll-by-roll json output so I can analyse.
+DONE- autoplay fails to pick up available single 5's and 1's if it's met the '4 used dice' criteria (the PC player only rerolls if < 4 used dice). Might make the used dice limiter only applicable if not superceded by playstyle.
+Probably done- I need to change the autoplay, so if it has score from preceeding rolls, it takes less risk. I thought I had but apparently not. It just busted with over 1000 turn score because on that roll it was only 200.
+DONE-- this really needs fixing. It has 1, 1, 1, 5, and still chose to reroll.
+
+- the autoplay bust message doesn't display for long enough.
 """
