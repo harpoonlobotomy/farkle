@@ -1,5 +1,5 @@
 """simple text-based farkle game
-started April 2026 //  v.08 // harpoonlobotomy"""
+started April 2026 //  v 1 // harpoonlobotomy"""
 
 from time import sleep
 
@@ -7,17 +7,20 @@ positions = "[  1  ]      [  2  ]      [  3  ]      [  4  ]      [  5  ]      [ 
 END = "\033[0m"
 HIDE = "\033[?25l"
 SHOW = "\033[?25h"
+
 colours = {
     "white": "\033[0;37m", # not bold because it's too bright otherwise.
     "red": "\033[1;31m",
     "green": "\033[1;32m",
+    "nobold_green": "\033[0;32m",
     "yellow": "\033[1;33m",
     "blue": "\033[1;34m",
     "magenta": "\033[1;35m",
+    "nobold_cyan": "\033[0;36m",
     "cyan": "\033[1;36m",
 }
 
-export_data = True
+export_data = False
 
 class outputter:
 
@@ -106,17 +109,25 @@ class outputter:
 class print_colours:
 
     def __init__(self):
-        self.output:str = "blue"
-        self.points:str = "green"
+        self.default:str = "white"
+        self.input:str = "cyan"
+        self.output:str = "nobold_cyan"
+        self.points:str = "nobold_green"
         self.prompt:str = "white"
         self.pre_diceroll:str = "magenta"
         self.held_dice:str = "green"
         self.used_dice:str = "yellow"
 
-    def playernm(self, text, type="output"):
+    def playernm(self, player:"playerInst", format=None):
 
-
-        return f"{colours.get()}"
+        end = colours[self.default]
+        if player.skin:
+            col = colours[player.skin] if colours.get(player.skin) else player.skin # else assume already a code, though I don't think it ever will be
+        if format:
+            end = getattr(self, format)
+            if end:
+                end = colours[end]
+        return f"{col}{player.name}{end}"
 
 
 print_colour = print_colours()
@@ -155,6 +166,15 @@ class pos_data:
     def __repr__(self):
         return (f"{self.dice_line}: dice // {self.prompt_line}: prompt // {self.input_line}: inputstr // {self.output_line}: output")
 
+    def get_visible_length(self, text):
+        # Regex to match ANSI escape codes
+
+        #print(f"Visible length before: {len(text)}")
+        import re
+        for m in re.finditer(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]', text):
+            text = text.replace(m.group(0), '')
+        #print(f"Visible length  after: {len(text)}")
+        return len(text)
 
     def print_error(self, text, val=None):
         extra = ''
@@ -173,7 +193,8 @@ class pos_data:
             #self.print_error(f"text parts: {str(text_parts)}", 3)
 
             for i, part in enumerate(text_parts):
-                centred_text = int((self.columns - len(part))/2)-1
+                part_length = self.get_visible_length(part)
+                centred_text = int((self.columns - part_length)/2)-1
                 centred_text = (" " * centred_text) + part + (" " * centred_text)
                 text = self.points_line + ("\n" * i) + centred_text + self.clearline + END # will break visually if too many newlines in a string, but works well for single line breaks.
                 print(text, end = '')
@@ -181,7 +202,8 @@ class pos_data:
                     sleep(.02)
 
         else:
-            centred_text = int((self.columns - len(text))/2)-1
+            text_length = self.get_visible_length(text)
+            centred_text = int((self.columns - text_length)/2)-1
             centred_text = (" " * centred_text) + text + (" " * centred_text)
             text = self.points_line + centred_text + self.clearline + END
             print(text, end = '')
@@ -191,7 +213,7 @@ class pos_data:
 
         skin = colours[skin] if colours.get(skin) else skin
         if die:
-            temp = self.dice_line.replace("7f", f"{self.dice_pos.get(die.place_no)}f")
+            temp = self.dice_line.replace("7f", f"{self.dice_pos.get(die.place_no)+1}f")
 
         if isinstance(text, list):
             text = ''.join(text)
@@ -217,7 +239,7 @@ class pos_data:
 
         centred_text = int((self.columns - len(text))/2)-1
         centred_text = (" " * (centred_text - 12)) + text
-        text = self.input_line + "\033[2;36m" + centred_text + self.clearline + END
+        text = self.input_line + colours[print_colour.input] + centred_text + self.clearline + END
         print(text, end = '')
 
 
@@ -232,16 +254,17 @@ class pos_data:
             store_text = text
             text = text.replace("[[", "").replace("]]", "").strip()
 
-        centred_text = int((self.columns - len(f"[  {text}  ]"))/2)-1
+        text_length = self.get_visible_length(text) + len("[    ]")
+        centred_text = int((self.columns - text_length)/2)-1#len(f"[  {text}  ]"))/2)-1
         if store_text:
             import re
             for m in re.finditer(r"\[\[(\w+)]]", store_text):
-                text = "\033[2;32m" + m.group(1) + "\033[2;36m"
+                text = "\033[2;32m" + m.group(1) + colours[print_colour.output]
                 store_text = store_text.replace(m.group(0), text)
                 text = store_text
 
         centred_text = (" " * centred_text) + "[  " + text + "  ]"
-        text = self.output_line + "\033[2;36m" + centred_text + END
+        text = self.output_line + colours[print_colour.output] + centred_text + END
         print(text, end='')
         #print(self.clearline, end='')
 
@@ -402,7 +425,7 @@ class dice_data:
                 sleep(.02)
                 pos.print_prompt(f"I'll reroll the rest; {risk_reason}")
                 sleep(0.5)
-            print(f"USE DICE: {use_dice}")
+            #print(f"USE DICE: {use_dice}")
             return turn_score, use_dice
 
         return turn_score, None
@@ -692,7 +715,7 @@ class playerClass:
         sleep(1.5)
         clear_screen(limited=True)
         sleep(.3)
-        pos.print_output(f"Switching players, next up is {players.current.name}...")
+        pos.print_output(f"Switching players, next up is {print_colour.playernm(players.current, "output")}...")
         print()
         sleep(1.8)
 
@@ -825,7 +848,7 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
                 used_dice = updated_dice
 
     if print_result and held_score:
-        pos.print_output(f"{player.name} can score [[{held_score}]] points here if they choose to take the points, taking their total score to [[{player.game_score + player.turn_score + held_score}]].")
+        pos.print_output(f"{print_colour.playernm(player, "output")} can score [[{held_score}]] points here if they choose to take the points, taking their total score to [[{player.game_score + player.turn_score + held_score}]].")
         to_json.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
 
     if not matches:
@@ -893,7 +916,7 @@ def update_tally():
 def end_turn(player:playerInst):
     pos.print_prompt(clear=True)
     sleep(.05)
-    pos.print_output(f"Player `{print_colour.playernm(player)}` ends their turn with a score of [[{player.game_score}]].")
+    pos.print_output(f"{print_colour.playernm(player, "output")} ends their turn with a score of [[{player.game_score}]].")
     sleep(.8)
     print()
     clear_held_and_used()
@@ -1008,7 +1031,7 @@ def play_turn(player:playerInst):
     else:
         dice.skin = ""
     player.turn_count += 1
-    pos.print_output(f"{player.name} is rolling...")
+    pos.print_output(f"{print_colour.playernm(player, "output")} is rolling...")
     dice.set_default_val()
     dice.print_updated()
     dice.roll()
@@ -1096,7 +1119,7 @@ def play_turn(player:playerInst):
 
 def print_wins():
     sleep(.3)
-    pos.print_points(f"{players.current.name} has won {players.current.wins} game(s).  {players.opponent.name} has one {players.opponent.wins} game(s).")
+    pos.print_points(f"{print_colour.playernm(players.current, "points")} has won {players.current.wins} game(s).  {print_colour.playernm(players.opponent, "points")} has won {players.opponent.wins} game(s).")
     print()
     sleep(.8)
 
@@ -1147,30 +1170,40 @@ def pick_player_names(single_player=False):
                         if (test and test.lower() in ("y", "yes")) or not test:
                             break
 
-        init_classes(player1, player2, player1_col = "red", player2_col = "blue", single_player=single_player)
+        init_classes(player1, player2, player1_col = "blue", player2_col = "red", single_player=single_player)
 
         if single_player:
             while True:
-                not_choose_playstyle = True
-                if not_choose_playstyle:
-                    players.autoplay.playstyle = "harpoon" # hardset to this model
+                #not_choose_playstyle = True
+                #if not_choose_playstyle:
+                #    players.autoplay.playstyle = "harpoon" # hardset to this model
+                players.autoplay.playstyle = "harpoon" # hardset to this model
 
-                else:
+                pos.print_prompt(clear=True)
+                pos.print_prompt(f"Computer is set to `{players.autoplay.playstyle}` mode. Type `settings` to change mode, or press enter to continue.")
+                test = get_input()
+                pos.print_output(" ", clear=True)
+                if test and test == "settings":
+                    sleep(.2)
                     names = [f"[ {i} ]  " for i in players.playstyles]
                     pos.print_prompt(f"Please choose a PC player-type: {''.join(names)}")
+                    pos.print_output(f"'Standard' just takes the best dice available without strategy. 'Harpoon' is the author.")
 
                     chosen = get_input()
                     if not chosen:
-                        pos.print_output("Defaulting to 'standard'.")
-                        input()
+                        pos.print_output("Keeping current playstyle.")
 
-                    if chosen.strip().lower() in players.playstyles:
+                    elif chosen.strip().lower() in players.playstyles:
                         players.autoplay.playstyle = chosen
+                        pos.print_output(f"Mode set to `{players.autoplay.playstyle}`.")
 
-                pos.print_prompt(clear=True)
-                pos.print_output(f"`{players.autoplay.name}` playstyle set to `{players.autoplay.playstyle}`. Press enter to continue.")
+
+                    else:
+                        pos.print_output(f"`{chosen}` is not a valid playstyle. Keeping existing playstyle.")
+                    print()
+                    sleep(.8)
                 players.autoplay.name = players.autoplay.playstyle
-                input()
+
                 break
 
 
@@ -1179,10 +1212,10 @@ def pick_player_names(single_player=False):
 def print_rules():
     clear_screen()
     rules = "SCORING: \n\nA `straight` (`1, 2, 3, 4, 5, 6`) is 1500 points\nA `small straight` (either `1, 2, 3, 4, 5` or `2, 3, 4, 5, 6`) is 750 points\n" \
-    "Three-of-a-kind is `number x 100` (eg `3, 3, 3` is 300 points.)\nFour of a kind is `2x number x 100` (eg `3, 3, 3, 3` is 600 points)\n\n" \
+    "Three-of-a-kind is `number x 100` (eg `3, 3, 3` is 300 points.)\nFour of a kind is `2x (number x 100)` (eg `3, 3, 3, 3` is 600 points)\n\n" \
     "1's and 5's are special: All other numbers are only valuable as part of one of the combinations above, and cannot be chosen alone.\n" \
-    "But -- a 1 on its own is 100 points, and a 5 on its own is worth 50 points. \n\n" \
-    "* 1's are extra special: instead of 'number x 100', they are 'number x 1000' - 1, 1, 1, 1 is 2000 points.\n\n" \
+    "But -- a `1` on its own is worth 100 points, and a `5` on its own is worth 50 points. \n\n" \
+    "* 1's are extra special: instead of 'number x 100', they are 'number x 1000' ie, `1, 1, 1, 1` is 2000 points.\n\n" \
     "You must select at least one die each roll. If there is no valid die to select, you will bust, ending your turn and losing your points from that turn.\n" \
     "After selecting one or more die, you can choose to keep the points from those dice, or reroll the dice left over to try to get more points.\n\n" \
     "First player to 4000 points wins!\n\n[Press any key to return to Farkle.]"
@@ -1226,13 +1259,17 @@ def main():
 
     pick_player_names(single_player)
 
+
+    print()
+    sleep(.2)
     import os
     os.system("cls")
     print()
     sleep(.2)
     dice.init_dice()
     while True:
-        pos.print_points(f"Current turn: {players.total_turns + 1}  Current player: {players.current.name}. \n{players.current.name} has {players.current.game_score} points. {players.opponent.name} has {players.opponent.game_score} points.")
+        #pos.print_points(f"{print_colour.playernm(players.current, "points")} has won {players.current.wins} game(s).  {print_colour.playernm(players.opponent, "points")} has won {players.opponent.wins} game(s).")
+        pos.print_points(f"Current turn: {players.total_turns + 1}  Current player: {print_colour.playernm(players.current, "points")}.\n{print_colour.playernm(players.current, "points")} has {players.current.game_score} points. {print_colour.playernm(players.opponent, "points")} has {players.opponent.game_score} points.")
         sleep(0.2)
         dice.set_default_val()
         sleep(.5)
@@ -1245,10 +1282,9 @@ def main():
                 test = "yes"
             else:
                 test = get_input()
-                #pos.print_input("        >> ")
 
             if (test and ("n" in test.lower() or "no" in test.lower())) or not test:
-                pos.print_output(f"Alright, goodbye!")
+                pos.print_output("Alright, goodbye!")
                 print("\n\n\n\n")
                 break
         else:
@@ -1256,14 +1292,3 @@ def main():
         players.switch_players()
 
 main()
-
-"""
-need to:
-
-DONE - make sure the autoplay calculations are right. They seem right overall but every now and then I'm surprised by the outcome. Re-implementing roll-by-roll json output so I can analyse.
-DONE- autoplay fails to pick up available single 5's and 1's if it's met the '4 used dice' criteria (the PC player only rerolls if < 4 used dice). Might make the used dice limiter only applicable if not superceded by playstyle.
-Probably done- I need to change the autoplay, so if it has score from preceeding rolls, it takes less risk. I thought I had but apparently not. It just busted with over 1000 turn score because on that roll it was only 200.
-DONE-- this really needs fixing. It has 1, 1, 1, 5, and still chose to reroll.
-
-- the autoplay bust message doesn't display for long enough.
-"""
