@@ -1,267 +1,34 @@
 """simple text-based farkle game
 started April 2026 //  [gui version] v 1.1 // harpoonlobotomy"""
 
+# have commented out to_json throughout, add it back later.
 from time import sleep
+#from typing import Literal
 
 
-#### GUI ####
+global used_dice
+used_dice = set()
 
-#https://github.com/PySimpleGUI/PySimpleGUI/issues/4909 <- change button bg col and button mouseover col.
+def make_play_area():
 
-import FreeSimpleGUI as sg
-eggplant = "#3E2857",
-navy = "#284157"
-farkle_theme = {'BACKGROUND': navy,
-                'TEXT': "#25775f",
-                'INPUT': "#45523F",
-                'TEXT_INPUT': "#f5db74",
-                'SCROLL': "#003e9b",
-                'BUTTON': ('black', "#F8DC5E"),
-                'PROGRESS': ('#01826B', '#D0D0D0'),
-                'BORDER': 3,
-                'SLIDER_DEPTH': 0,
-                'PROGRESS_DEPTH': 0}
+    import os
+    os.system("cls")
 
-sg.theme_add_new('farkle_theme', farkle_theme)
-sg.theme('farkle_theme')
+    #print("\033[s", end='')
+    #print("\033[6n", end='') # reports current cursor position
 
-def make_window():
+    error_line = "0"
+    error = f"\033[{int(error_line)};1f"
+    start_line = "6" # before this is space for errors
 
-    std_dot_size=10
-    widest_measure = 340
-    half_measure = (widest_measure/2)-5
-    std_btn = 10
-    num_pad_w = 20
-    num_pad_h = 8
-    numbers_size = 40
-    border_lg = 6
-    five = 5
-    two = 2
-    size_text="small"
-    small_hide=False
-    tooltip_str="Press to change to small version"
-    restart_str="[Restart]"
-    pause_str="[Paused]"
+    points = f"\033[{int(start_line)-1};1f\033[2;32m"
+    dice_str = f"\033[{int(start_line) + 3};7f"
+    prompt = f"\033[{int(start_line) + 6};1f"
+    inputstr = f"\033[{int(start_line) + 8};1f"
+    output = f"\033[{int(start_line) + 10};1f"
 
-    bg_brown="#332b26"
-    bg_blue = "#36554E"#"darkblue"
-    numbers_colour="yellow"
-
-    icon_str = None
-
-    def make_button(width:float=std_btn, height:float=std_btn, key_str:str="Pause"):
-        key_upper = key_str.upper()
-        key_formatting = str("-" + key_upper + '-')
-        return sg.Button(key_str, key=key_formatting, size=(width,height), font=(f"courier {std_dot_size} bold"))
-
-    def add_dots(dot_size=std_dot_size):
-        dot_instance = sg.Text('•', font=(f"courier {dot_size} bold"), auto_size_text=True, pad=0, justification="centre")
-        return dot_instance
-
-    def make_vert_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
-        return [[add_dots(size1)], [add_dots(size2)], [add_dots(size3)]]
-
-    def make_horz_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
-        return [[add_dots(size1), add_dots(size2), add_dots(size3)]]
-
-    def counter_text(key_str="minutes", txt_col=numbers_colour, val=str("00")):
-        counting_font=f'segoe {numbers_size} bold'
-        return sg.Text(text=val, key=key_str, size=(2,1), background_color=bg_blue, relief="sunken", border_width=border_lg, justification="center", font=counting_font, text_color=txt_col, pad=(4, num_pad_h))
-
-    def mid_gap():
-        #mid_dots = [[add_dots(std_dot_size)], [add_dots(std_dot_size)]]
-        return [[sg.Canvas(size=(12,14))]]
-
-    def settings():
-        print("Here we open the settings menu.")
-
-    dice = [[counter_text("die_1", None, 1),
-                sg.Column(layout=mid_gap()),
-                counter_text("die_2", None, 2),
-                sg.Column(layout=mid_gap()),
-                counter_text("die_3", None, 3),
-                sg.Column(layout=mid_gap()),
-                counter_text("die_4", None, 4),
-                sg.Column(layout=mid_gap()),
-                counter_text("die_5", None, 5),
-                sg.Column(layout=mid_gap()),
-                counter_text("die_6", None, 6),
-                  ]]
-
-    column_one_vert = [[make_button(width=std_btn, height=1, key_str="Settings"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
-                       [sg.Canvas(size=(widest_measure,two))],
-                    [sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center"),
-                     sg.Column(layout=dice, justification="c", vertical_alignment="center"),
-                     sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center")]]
-
-    column_two_vert = [[sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.HSeparator(color="gold")],
-                    #[sg.Canvas(size=(widest_measure,five))],
-                    [sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [
-                     #sg.Column(layout=make_horz_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), pad=0),
-                     sg.Stretch(),
-                     sg.Text('•', font=(f"courier {int(std_dot_size) + 4} bold"), pad=0),
-                     sg.Text('Score from selected dice:', font=(int(std_dot_size) + 2)),
-                     sg.Text('     ', font=(int(std_dot_size) + 2)),
-                     sg.Text('•', font=(f"courier {int(std_dot_size) + 4} bold"), pad=0),
-                     sg.Stretch()
-                     ],
-                    [sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.HSeparator(color="gold")],
-                    [sg.Canvas(size=(widest_measure,two), pad=two)],
-                     #sg.InputText(default_text='', size=(int(std_dot_size)+6, int(std_dot_size)*2), border_width=two, focus=False, enable_events=True, justification="c", font=("courier", std_dot_size, "bold"),
-                     #   key='-INPUT-', tooltip="Enter the dice values you wish to hold."),
-                     [sg.VStretch()],
-                     [
-                     sg.Stretch(),
-                     sg.Column(layout=make_horz_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), pad=0),
-                     sg.Stretch(), make_button(width=std_btn, height=1, key_str="Roll"), sg.Stretch(), make_button(width=std_btn, height=1, key_str="Take"),
-                     sg.Column(layout=make_horz_dots(size1=int(std_dot_size)+4, size2=int(std_dot_size)+2, size3=std_dot_size)),
-                     sg.Stretch()
-                     ],
-                     [sg.VStretch()],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
-                     [sg.HSeparator(color="gold")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
-
-                    [add_dots(), sg.Canvas(size=(half_measure,two), pad=two), sg.Stretch(), add_dots(), sg.Stretch(), sg.Canvas(size=(half_measure,two), pad=two), add_dots()],
-                    [sg.VStretch()],
-                    ]
-
-    main_contents_vert = [
-            [sg.Column(layout=column_one_vert, justification="center")], [sg.Column(layout=column_two_vert, justification="center")]
-        ]
-
-
-    layout = [[sg.Frame(title="timer ••", layout=main_contents_vert, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
-
-    # Create the Window
-
-    window = sg.Window('FARKLE', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=icon_str)
-    window['-TAKE-'].bind("<Return>", "_Enter")
-    while True:
-        event, values = window.read(timeout=1000)
-        if event == "-START-" or event == "-TAKE-" + "_Enter":
-            print("Please enter dice value(s)")
-
-        if event == sg.WIN_CLOSED or event == '-EXIT-':
-            running=False
-            break
-
-        if event == "-SETTINGS-":
-            pauseblink_invis, paused, running = settings(window) # invis is always starting from False regardless of actual status here.
-
-    window.close()
-    return "exit", None
-
-
-##### MAIN GAME ######
-
-positions = "[  1  ]      [  2  ]      [  3  ]      [  4  ]      [  5  ]      [  6  ]"
-END = "\033[0m"
-HIDE = "\033[?25l"
-SHOW = "\033[?25h"
-
-colours = {
-    "white": "\033[0;37m", # not bold because it's too bright otherwise.
-    "red": "\033[1;31m",
-    "green": "\033[1;32m",
-    "nobold_green": "\033[0;32m",
-    "yellow": "\033[1;33m",
-    "blue": "\033[1;34m",
-    "magenta": "\033[1;35m",
-    "nobold_cyan": "\033[0;36m",
-    "cyan": "\033[1;36m",
-}
-
-export_data = False
-
-make_window()
-
-class outputter:
-
-    def __init__(self):
-        from uuid import uuid4
-        self.session_ID:str = str(uuid4())[-6:]
-        self.turn_data = {}
-        self.game_data = {}
-
-    def start_game(self):
-
-        self.game_data = {self.session_ID: {0: {}}}
-
-
-    def output_gamedata(self, player, turn = None, end_game=False):
-
-        if not export_data:
-            return
-
-        import json
-        file = r"D:\Git_Repos\farkle\farkle.json"
-
-        with open(file, "r") as f:
-            farkle_file = json.load(f)
-
-        gamedata = self.game_data.copy()
-
-        if farkle_file:
-            for entry in farkle_file:
-                if entry and entry != self.session_ID:
-                    gamedata[entry] = farkle_file[entry]
-
-        if end_game:
-            gamedata[self.session_ID][players.total_games]["game_score"] = {players.current.name: players.current.game_score, players.opponent.name: players.opponent.game_score}
-
-        with open(file, "w") as f:
-            json.dump(gamedata, f, indent=2)
-
-
-    def collect_turndata(self, player:"playerInst", matches=None, die_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
-
-        """
-            {total_turns}: {
-                player: {player.name},
-                rolls: [{matches}]
-                turn_end_score: {turn_score: game_score}
-            }
-
-        """
-        write_turn_data = False#True
-        force_no_writing = False
-        if force_no_writing:
-            return
-
-        if die_rolled:
-            if not isinstance(die_rolled, list|set|tuple):
-                die_rolled = list(die_rolled)
-
-        if initial_roll:
-            initial_roll = list(i.value for i in dice.dice)
-
-        if self.turn_data and self.turn_data.get(players.total_turns):
-            current_data = self.turn_data[players.total_turns]
-        else:
-            self.turn_data[players.total_turns] = {"player": player.name, "initial roll": initial_roll, "rolls": {}}
-            current_data = self.turn_data[players.total_turns]
-
-
-        if matches:
-            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": matches, "Roll score": roll_score})
-
-        if bust:
-            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": "BUST", "Roll score": roll_score})
-            current_data["turn_end_score"] = {0: player.game_score}
-
-        if turn_end:
-            current_data["turn_end_score"] = {player.turn_score: player.game_score}
-            if write_turn_data:
-                self.output_gamedata(player)
-
-        self.game_data.setdefault(self.session_ID, {}).setdefault(players.total_games, {}).setdefault(players.total_turns, current_data)
-
-        if game_end:
-            self.output_gamedata(player, end_game=True)
+    global pos
+    pos = pos_data(error, points, dice_str, prompt, inputstr, output)
 
 class print_colours:
 
@@ -425,6 +192,7 @@ class pos_data:
         print(text, end='')
         #print(self.clearline, end='')
 
+
 def get_input():
     pos.print_input(">> ")
     #print(SHOW, end='')
@@ -432,40 +200,6 @@ def get_input():
     #print(HIDE, end='')
     pos.print_input("     ") # to clear the line once input is accepted.
     return test
-
-def make_play_area():
-
-    import os
-    os.system("cls")
-
-    #print("\033[s", end='')
-    #print("\033[6n", end='') # reports current cursor position
-
-    error_line = "0"
-    error = f"\033[{int(error_line)};1f"
-    start_line = "6" # before this is space for errors
-
-    points = f"\033[{int(start_line)-1};1f\033[2;32m"
-    dice_str = f"\033[{int(start_line) + 3};7f"
-    prompt = f"\033[{int(start_line) + 6};1f"
-    inputstr = f"\033[{int(start_line) + 8};1f"
-    output = f"\033[{int(start_line) + 10};1f"
-
-    global pos
-    pos = pos_data(error, points, dice_str, prompt, inputstr, output)
-
-    """
-    ESC[{line};{column}H
-ESC[{line};{column}f	moves cursor to line #, column
-
-ESC[s	save cursor position (SCO)
-ESC[u
-
-        self.dice_line:str = ""
-        self.prompt_line:str = ""
-        self.input_line:str = ""
-        self.output_line:str = ""
-    """
 
 class die:
     def __init__(self, place_number = 1, skin=None):
@@ -491,15 +225,20 @@ class dice_data:
     def init_dice(self):
 
         for i in range(1, 7):
-            self.dice.add(die(place_number=i, skin=self.skin))
-        self.by_no = {die.place_no: die for die in self.dice}
+            die_inst = die(place_number=i, skin=self.skin)
+            self.dice.add(die_inst)
+            self.by_no[i] = die_inst
 
+        #self.by_no = {die.place_no: die for die in self.dice}
 
     def print_updated(self, die = None, skin = None):
 
         def print_die(die, skin):
             if isinstance(die, int):
-                die = self.by_no[i]
+                die = self.by_no[die]
+            if isinstance(die, str):
+                die = self.by_no[int(die)]
+
             if skin:
                 die_skin = colours[skin] if colours.get(skin) else skin
             else:
@@ -528,18 +267,18 @@ class dice_data:
 
     def set_default_val(self):
 
-        val = 1
         for die in dice.dice:
             if dice.skin and (not die.skin or die.skin == "default" or die.skin != dice.skin):
                 die.skin = dice.skin
 
-            die.place_no = die.value = val # place 1-6 in that order
-            val += 1
+            #die.place_no = int(str(val)) ## Why was I ever resetting the /place_no/???
+            die.value = die.place_no # place 1-6 in that order
             dice.print_updated(die, skin=print_colour.pre_diceroll)
             sleep(.08)
             print()
 
-    def apply_playstyle(self, player:"playerInst", turn_score, available_dice:set[die]):
+
+    def apply_playstyle(self, player:"playerInst", turn_score, available_dice:set["die"]):
 
         think_aloud = True
 
@@ -630,27 +369,128 @@ class dice_data:
         sleep(0.1)
 
 
-    def hold(self, place_no, player): # selecting by place_no; if there was a graphic, they would scatter to roll then scoot back to their positions.
+    def hold(self, die_inst): # selecting by place_no; if there was a graphic, they would scatter to roll then scoot back to their positions.
 
-        if place_no not in self.by_no:
-            print(f"self.by_no: {self.by_no}")
-            raise ValueError(f"[die with place_no `{place_no}` does not exist]")
-
-        die = self.by_no.get(place_no)
-
-        if die.held:
-            die.held = False
-            dice.held_dice.remove(die)
+        if die_inst.held:
+            die_inst.held = False
+            dice.held_dice.remove(die_inst)
             #player.held_score -= die.value
             #self.hold_formatting(die)
         else:
-            die.held = True
+            die_inst.held = True
             #player.held_score += die.value
-            dice.held_dice.add(die)
+            dice.held_dice.add(die_inst)
             #self.hold_formatting(die)
         self.print_updated()
+        return die_inst
 
 dice = dice_data()
+dice.init_dice()
+
+##### MAIN GAME ######
+
+positions = "[  1  ]      [  2  ]      [  3  ]      [  4  ]      [  5  ]      [  6  ]"
+END = "\033[0m"
+HIDE = "\033[?25l"
+SHOW = "\033[?25h"
+
+colours = {
+    "white": "\033[0;37m", # not bold because it's too bright otherwise.
+    "red": "\033[1;31m",
+    "green": "\033[1;32m",
+    "nobold_green": "\033[0;32m",
+    "yellow": "\033[1;33m",
+    "blue": "\033[1;34m",
+    "magenta": "\033[1;35m",
+    "nobold_cyan": "\033[0;36m",
+    "cyan": "\033[1;36m",
+}
+
+export_data = False
+
+class outputter:
+
+    def __init__(self):
+        from uuid import uuid4
+        self.session_ID:str = str(uuid4())[-6:]
+        self.turn_data = {}
+        self.game_data = {}
+
+    def start_game(self):
+
+        self.game_data = {self.session_ID: {0: {}}}
+
+
+    def output_gamedata(self, player, turn = None, end_game=False):
+
+        if not export_data:
+            return
+
+        import json
+        file = r"D:\Git_Repos\farkle\farkle.json"
+
+        with open(file, "r") as f:
+            farkle_file = json.load(f)
+
+        gamedata = self.game_data.copy()
+
+        if farkle_file:
+            for entry in farkle_file:
+                if entry and entry != self.session_ID:
+                    gamedata[entry] = farkle_file[entry]
+
+        if end_game:
+            gamedata[self.session_ID][players.total_games]["game_score"] = {players.current.name: players.current.game_score, players.opponent.name: players.opponent.game_score}
+
+        with open(file, "w") as f:
+            json.dump(gamedata, f, indent=2)
+
+
+    def collect_turndata(self, player:"playerInst", matches=None, die_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
+
+        """
+            {total_turns}: {
+                player: {player.name},
+                rolls: [{matches}]
+                turn_end_score: {turn_score: game_score}
+            }
+
+        """
+        write_turn_data = False#True
+        force_no_writing = False
+        if force_no_writing:
+            return
+
+        if die_rolled:
+            if not isinstance(die_rolled, list|set|tuple):
+                die_rolled = list(die_rolled)
+
+        if initial_roll:
+            initial_roll = list(i.value for i in dice.dice)
+
+        if self.turn_data and self.turn_data.get(players.total_turns):
+            current_data = self.turn_data[players.total_turns]
+        else:
+            self.turn_data[players.total_turns] = {"player": player.name, "initial roll": initial_roll, "rolls": {}}
+            current_data = self.turn_data[players.total_turns]
+
+
+        if matches:
+            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": matches, "Roll score": roll_score})
+
+        if bust:
+            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": "BUST", "Roll score": roll_score})
+            current_data["turn_end_score"] = {0: player.game_score}
+
+        if turn_end:
+            current_data["turn_end_score"] = {player.turn_score: player.game_score}
+            if write_turn_data:
+                self.output_gamedata(player)
+
+        self.game_data.setdefault(self.session_ID, {}).setdefault(players.total_games, {}).setdefault(players.total_turns, current_data)
+
+        if game_end:
+            self.output_gamedata(player, end_game=True)
 
 class playerInst:
 
@@ -743,7 +583,7 @@ def get_dice_by_val(i, val, player, in_loop:set[die]):
         if inst.value == int(val) and inst not in in_loop and not inst.used:
             val = i
             #print(f"(Holding die in position [{val}])")
-            dice.hold(val, player)#players.get(player) if player_1 else players.get("player_2"))
+            dice.hold(inst)#players.get(player) if player_1 else players.get("player_2"))
             in_loop.add(inst)
             return in_loop
         #elif inst.value == int(val) and inst in in_loop:
@@ -751,13 +591,14 @@ def get_dice_by_val(i, val, player, in_loop:set[die]):
     return in_loop
 
 
-def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get_score=True): # if print_result, send roll to json
-
+def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get_score=True, test_only=False): # if print_result, send roll to json
+    """returns held_score (int) and used_dice (set)"""
     if autoplay_dice:
         dice_selection = set(autoplay_dice)
     else:
         dice_selection = dice.held_dice # Not used anymore, will remove later.
 
+    print_output=None
     matches = {}
     held_score = 0
     vals = set(i.value for i in dice_selection)
@@ -845,23 +686,26 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
                 used_dice = updated_dice
 
     if print_result and held_score:
+        print_output = f"{print_colour.playernm(player, "output")} can score [[{held_score}]] points here if they choose to take the points, taking their total score to [[{player.game_score + player.turn_score + held_score}]]."
         pos.print_output(f"{print_colour.playernm(player, "output")} can score [[{held_score}]] points here if they choose to take the points, taking their total score to [[{player.game_score + player.turn_score + held_score}]].")
-        to_json.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
+        #.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
 
-    if not matches:
+    if not matches and not test_only:
         player.turn_score = 0
-        to_json.collect_turndata(players.current, die_rolled=dice_selection, roll_score=held_score, bust=True)
+        #to_json.collect_turndata(players.current, die_rolled=dice_selection, roll_score=held_score, bust=True)
+        print_output = f"BUST! Ending {players.current.name}'s turn."
         pos.print_output(f"BUST! Ending {players.current.name}'s turn.")
         print()
         sleep(.8)
 
     if get_score:
         player.turn_score += held_score
-    return held_score, used_dice
+    return held_score, used_dice, print_output
 
 def clear_held_and_used():
 
     for die in dice.dice:
+        die.value = str(die.place_no)
         die.used = False
         die.held = False
         if die in dice.held_dice:
@@ -913,6 +757,7 @@ def update_tally():
 def end_turn(player:playerInst):
     pos.print_prompt(clear=True)
     sleep(.05)
+    print("\033[1;37m")
     pos.print_output(f"{print_colour.playernm(player, "output")} ends their turn with a score of [[{player.game_score}]].")
     sleep(.8)
     print()
@@ -960,7 +805,7 @@ def autoplay(player:playerInst):
         dice.print_updated()
         print()
         pos.print_output("Getting score...")
-        has_potential, used_dice = get_score(player, unused_dice, print_result=False, get_score=False)
+        has_potential, used_dice, output_text = get_score(player, unused_dice, print_result=False, get_score=False)
         #has_potential, used_dice = dice.auto_best(player)
         #pos.print_error(f"HAS POTENTIAL: {has_potential}")# USED DICE: {used_dice}")
         #has_potential = dice.dice_potential(starting=True)
@@ -975,7 +820,7 @@ def autoplay(player:playerInst):
 
         dice.print_updated()
         sleep(.4)
-        score, used_dice = get_score(player, used_dice)
+        score, used_dice, _ = get_score(player, used_dice)
 
         mark_used(used_dice)
 
@@ -1047,7 +892,7 @@ def play_turn(player:playerInst):
         #has_potential, _ = dice.auto_best(output_results=False)
         die_set = in_loop if in_loop else set(i for i in dice.dice if not i.used)
         #input(f"\n\n\ndie set: {die_set}")
-        has_potential, _ = get_score(player, autoplay_dice=die_set, print_result=True if in_loop else False, get_score=False)
+        has_potential, _, _ = get_score(player, autoplay_dice=die_set, print_result=True if in_loop else False, get_score=False)
         #pos.print_error(f"HAS POTENTIAL: {has_potential}")
         if not has_potential:
             clear_held_and_used()
@@ -1082,7 +927,7 @@ def play_turn(player:playerInst):
             pos.print_output(f"Getting score...")
 
             #has_potential, in_loop = dice.auto_best(output_results=True, is_auto=False)
-            score, _ = get_score(player, in_loop)
+            score, _, _ = get_score(player, in_loop)
 
             mark_used(in_loop)
 
@@ -1123,7 +968,7 @@ def print_wins():
 
 def pick_player_names(single_player=False):
 
-    pick_names = True
+    pick_names = False#True
     player1 = "player_1"
     player2 = "player_2"
 
@@ -1167,41 +1012,42 @@ def pick_player_names(single_player=False):
                         if (test and test.lower() in ("y", "yes")) or not test:
                             break
 
-        init_classes(player1, player2, player1_col = "blue", player2_col = "red", single_player=single_player)
+    init_classes(player1, player2, player1_col = "blue", player2_col = "red", single_player=single_player)
 
-        if single_player:
-            while True:
-                #not_choose_playstyle = True
-                #if not_choose_playstyle:
-                #    players.autoplay.playstyle = "harpoon" # hardset to this model
-                players.autoplay.playstyle = "harpoon" # hardset to this model
+    if single_player:
+        while True:
+            #not_choose_playstyle = True
+            #if not_choose_playstyle:
+            #    players.autoplay.playstyle = "harpoon" # hardset to this model
+            players.autoplay.playstyle = "harpoon" # hardset to this model
 
-                pos.print_prompt(clear=True)
-                pos.print_prompt(f"Computer is set to `{players.autoplay.playstyle}` mode. Type `settings` to change mode, or press enter to continue.")
-                test = get_input()
-                pos.print_output(" ", clear=True)
-                if test and test == "settings":
-                    sleep(.2)
-                    names = [f"[ {i} ]  " for i in players.playstyles]
-                    pos.print_prompt(f"Please choose a PC player-type: {''.join(names)}")
-                    pos.print_output(f"'Standard' just takes the best dice available without strategy. 'Harpoon' is the author.")
+            pos.print_prompt(clear=True)
+            #pos.print_prompt(f"Computer is set to `{players.autoplay.playstyle}` mode. Type `settings` to change mode, or press enter to continue.")
+            #test = get_input()
+            test = ''
+            pos.print_output(" ", clear=True)
+            if test and test == "settings":
+                sleep(.2)
+                names = [f"[ {i} ]  " for i in players.playstyles]
+                pos.print_prompt(f"Please choose a PC player-type: {''.join(names)}")
+                pos.print_output(f"'Standard' just takes the best dice available without strategy. 'Harpoon' is the author.")
 
-                    chosen = get_input()
-                    if not chosen:
-                        pos.print_output("Keeping current playstyle.")
+                chosen = get_input()
+                if not chosen:
+                    pos.print_output("Keeping current playstyle.")
 
-                    elif chosen.strip().lower() in players.playstyles:
-                        players.autoplay.playstyle = chosen
-                        pos.print_output(f"Mode set to `{players.autoplay.playstyle}`.")
+                elif chosen.strip().lower() in players.playstyles:
+                    players.autoplay.playstyle = chosen
+                    pos.print_output(f"Mode set to `{players.autoplay.playstyle}`.")
 
 
-                    else:
-                        pos.print_output(f"`{chosen}` is not a valid playstyle. Keeping existing playstyle.")
-                    print()
-                    sleep(.8)
-                players.autoplay.name = players.autoplay.playstyle
+                else:
+                    pos.print_output(f"`{chosen}` is not a valid playstyle. Keeping existing playstyle.")
+                print()
+                #sleep(.8)
+            players.autoplay.name = players.autoplay.playstyle
 
-                break
+            break
 
 
     return player1, player2
@@ -1220,7 +1066,28 @@ def print_rules():
     input()
     clear_screen()
 
+def do_turns():
+        pos.print_points(f"Current turn: {players.total_turns + 1}  Current player: {print_colour.playernm(players.current, "points")}.\n{print_colour.playernm(players.current, "points")} has {players.current.game_score} points. {print_colour.playernm(players.opponent, "points")} has {players.opponent.game_score} points.")
+        sleep(0.2)
+        dice.set_default_val()
+        sleep(.5)
+        players.total_turns += 1
+        if play_turn(players.current):
+            print_wins()
 
+            pos.print_prompt("Do you want to play again?")
+            if players.autoplay and isinstance(players.autoplay, bool): # only autoplay next round if both players are PC
+                test = "yes"
+            else:
+                test = get_input()
+
+            if (test and ("n" in test.lower() or "no" in test.lower())) or not test:
+                pos.print_output("Alright, goodbye!")
+                print("\n\n\n\n")
+                return "end"
+        else:
+            update_tally()
+        players.switch_players()
 def main():
 
     global to_json
@@ -1263,29 +1130,392 @@ def main():
     os.system("cls")
     print()
     sleep(.2)
-    dice.init_dice()
     while True:
+        if do_turns():
+            break
         #pos.print_points(f"{print_colour.playernm(players.current, "points")} has won {players.current.wins} game(s).  {print_colour.playernm(players.opponent, "points")} has won {players.opponent.wins} game(s).")
-        pos.print_points(f"Current turn: {players.total_turns + 1}  Current player: {print_colour.playernm(players.current, "points")}.\n{print_colour.playernm(players.current, "points")} has {players.current.game_score} points. {print_colour.playernm(players.opponent, "points")} has {players.opponent.game_score} points.")
-        sleep(0.2)
-        dice.set_default_val()
-        sleep(.5)
-        players.total_turns += 1
-        if play_turn(players.current):
-            print_wins()
 
-            pos.print_prompt("Do you want to play again?")
-            if players.autoplay and isinstance(players.autoplay, bool): # only autoplay next round if both players are PC
-                test = "yes"
+#### GUI ####
+
+#https://github.com/PySimpleGUI/PySimpleGUI/issues/4909 <- change button bg col and button mouseover col.
+
+import FreeSimpleGUI as sg
+eggplant = "#3E2857",
+navy = "#284157"
+farkle_theme = {'BACKGROUND': navy,
+                'TEXT': "#25775f",
+                'INPUT': "#45523F",
+                'TEXT_INPUT': "#f5db74",
+                'SCROLL': "#003e9b",
+                'BUTTON': ('black', "#F8DC5E"),
+                'PROGRESS': ('#01826B', '#D0D0D0'),
+                'BORDER': 3,
+                'SLIDER_DEPTH': 0,
+                'PROGRESS_DEPTH': 0}
+
+sg.theme_add_new('farkle_theme', farkle_theme)
+sg.theme('farkle_theme')
+
+def make_window():
+
+    std_dot_size=10
+    widest_measure = 340
+    half_measure = (widest_measure/2)-5
+    std_btn = 10
+    num_pad_w = 20
+    num_pad_h = 8
+    numbers_size = 40
+    border_lg = 6
+    five = 5
+    two = 2
+    size_text="small"
+    small_hide=False
+    tooltip_str="Press to change to small version"
+    restart_str="[Restart]"
+    pause_str="[Paused]"
+
+    bg_brown="#332b26"
+    bg_blue = "#36554E"#"darkblue"
+    numbers_colour="yellow"
+    button_mouseover="#105C26"
+    button_held = "#F8DC5E"
+    button_used = "#666354"
+    button_std = ('black', "#487458")
+
+    icon_str = None
+    dice_dict = {}
+
+    die_1 = 1
+    die_2 = 2
+    die_3 = 3
+    die_4 = 4
+    die_5 = 5
+    die_6 = 6
+
+    used_dice = dice.dice
+
+    point_value = ''
+    output_line_str = ''
+
+    def colour_buttons(die_inst=None):
+
+        def _do_colour(die_inst):
+            dice_place = "die_" + str(die_inst.place_no)
+
+            if die_inst.held:
+                window[dice_place].update(button_color=button_held)
+            elif die_inst.used:
+                window[dice_place].update(button_color=button_used)
             else:
-                test = get_input()
+                window[dice_place].update(button_color=button_std)
 
-            if (test and ("n" in test.lower() or "no" in test.lower())) or not test:
-                pos.print_output("Alright, goodbye!")
-                print("\n\n\n\n")
-                break
+        if not die_inst:
+            for i in dice.dice:
+                _do_colour(i)
         else:
-            update_tally()
-        players.switch_players()
+            _do_colour(die_inst)
 
+    def hold_dice(die_inst):
+
+        #dice_place_no = dice_place.replace("die_", '')
+        #dice_place_no = int(dice_place_no)
+        dice.hold(die_inst)
+        colour_buttons(die_inst)
+
+
+
+    def identify_die(key_str):
+        if key_str == "die_1":
+            val = die_1
+        if key_str == "die_2":
+            val = die_2
+        if key_str == "die_3":
+            val = die_3
+        if key_str == "die_4":
+            val = die_4
+        if key_str == "die_5":
+            val = die_5
+        if key_str == "die_6":
+            val = die_6
+        return val
+
+    def get_die_inst(key):
+        key = key.replace("die_", "")
+        inst = dice.by_no[int(key)]
+        return inst
+
+    def get_die_val(key_str):
+        val = identify_die(key_str)
+        return val
+
+    def roll_dice():
+        import random
+        for _ in range(4):
+            for i, die_inst in dice_dict.items():
+                #print(f"i: {die_inst.place_no}: {die_inst}")
+
+                if not die_inst.held and not die_inst.used:
+                    die_inst.value = random.randrange(1,7)
+                colour_buttons(die_inst)
+                #print(f"VALUES FOR EVENT {i}:")
+                #print(f"VALUE: {die.ButtonText}")
+                window[i].__setattr__("metadata", str(die_inst.value))
+                #window[i].__setattr__("button_text", str(roll_outcome))
+                #sset_die_val(i, roll_outcome)
+                window[i].update(die_inst.value)
+                dice.print_updated(die_inst)
+
+
+    def make_button(width:float=std_btn, height:float=std_btn, key_str:str="Pause"):
+        key_upper = key_str.upper()
+        key_formatting = str("-" + key_upper + '-')
+        #sg.Button("Hello", , use_ttk_buttons=True)
+        return sg.Button(key_str, key=key_formatting, mouseover_colors=button_mouseover, use_ttk_buttons=True, size=(width,height), font=(f"courier {std_dot_size} bold"))
+
+    def make_die(key_str:str="1"):
+
+        val = get_die_val(key_str)
+
+        #key_upper = str(key_str).upper()
+        key_str = key_str#str("die_" + key_upper)
+        #sg.Button("Hello", , use_ttk_buttons=True)
+        image_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````\x00\x00\x00\x05\x00\x01\xa5\xf6E@\x00\x00\x00\x00IEND\xaeB`\x82'
+        button = sg.Button(button_text=str(val), button_color=button_std, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
+        dice_dict[key_str] = get_die_inst(key_str)
+        return button
+
+    def add_dots(dot_size=std_dot_size):
+        dot_instance = sg.Text('•', font=(f"courier {dot_size} bold"), auto_size_text=True, pad=0, justification="centre")
+        return dot_instance
+
+    def make_vert_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
+        return [[add_dots(size1)], [add_dots(size2)], [add_dots(size3)]]
+
+    def make_horz_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
+        return [[add_dots(size1), add_dots(size2), add_dots(size3)]]
+
+    def mid_gap():
+        #mid_dots = [[add_dots(std_dot_size)], [add_dots(std_dot_size)]]
+        return [[sg.Canvas(size=(12,14))]]
+
+    def reset_for_new_turn():
+        update_output_line(f"{players.current.name} ends their turn with a score of {players.current.game_score} points.")
+        #update_output_line(f"{print_colour.playernm(players.current, "output")} ends their turn with a score of [[{players.current.game_score}]].")
+        end_turn(players.current)
+
+        players.current, players.opponent = players.opponent, players.current
+
+        clear_held_and_used()
+        for die_inst in dice.dice:
+            window[f"die_{str(die_inst.place_no)}"].update(str(die_inst.value))
+            colour_buttons(die_inst)
+            dice.print_updated(die_inst)
+
+    def settings():
+        print("Here we open the settings menu.")
+
+    def write_points(score='', bust=False):
+
+        if not bust:
+            if score:
+                point_value = f"Points from this roll: {score}"
+            else:
+                point_value = ''
+        else:
+            point_value = f"{players.current.name} busts!!"
+        window["point_output"].update(point_value)
+
+        return
+
+    def update_output_line(text=''):
+        #output_line_str, key="output_line"
+        output_line_str = text
+        window["output_line"].update(output_line_str)
+
+    def clear_prints():
+        write_points()
+        update_output_line()
+
+    dice_display = [[make_die("die_1"),#counter_text("die_1", None, 1),
+                    sg.Column(layout=mid_gap()),
+                    make_die("die_2"),
+                    sg.Column(layout=mid_gap()),
+                    make_die("die_3"),
+                    sg.Column(layout=mid_gap()),
+                    make_die("die_4"),
+                    sg.Column(layout=mid_gap()),
+                    make_die("die_5"),
+                    sg.Column(layout=mid_gap()),
+                    make_die("die_6"),
+                    ]]
+
+    column_one_vert = [[make_button(width=std_btn, height=1, key_str="Settings"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
+                       [sg.Canvas(size=(widest_measure,two))],
+                    [sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center"),
+                     sg.Column(key="dice_layout", layout=dice_display, justification="c", vertical_alignment="center"),
+                     sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center")]]
+
+    column_two_vert = [[sg.Canvas(size=(widest_measure,two), pad=two)],
+                    [sg.HSeparator(color="gold")],
+                    #[sg.Canvas(size=(widest_measure,five))],
+                    [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     #sg.InputText(default_text='', size=(int(std_dot_size)+6, int(std_dot_size)*2), border_width=two, focus=False, enable_events=True, justification="c", font=("courier", std_dot_size, "bold"),
+                     #   key='-INPUT-', tooltip="Enter the dice values you wish to hold."),
+                     [sg.VStretch()],
+                     [
+                     sg.Stretch(),
+                     sg.Column(layout=make_horz_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), pad=0),
+                     sg.Stretch(), make_button(width=std_btn, height=1, key_str="Roll"), sg.Stretch(), make_button(width=std_btn, height=1, key_str="Take"),
+                     sg.Column(layout=make_horz_dots(size1=int(std_dot_size)+4, size2=int(std_dot_size)+2, size3=std_dot_size)),
+                     sg.Stretch()
+                     ],
+                     [sg.VStretch()],
+                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.HSeparator(color="gold")],
+                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+
+                    [sg.VStretch()],
+                    [add_dots(), sg.Canvas(size=(half_measure,two), pad=two), sg.Stretch(), add_dots(), sg.Stretch(), sg.Canvas(size=(half_measure,two), pad=two), add_dots()],
+                    [sg.VStretch()],
+                    [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), pad=0), sg.Stretch()],
+                    [sg.VStretch()],
+                    [add_dots(), sg.Canvas(size=(half_measure,two), pad=two), sg.Stretch(), add_dots(), sg.Stretch(), sg.Canvas(size=(half_measure,two), pad=two), add_dots()],
+                    [sg.VStretch()],
+                    ]
+
+    column_3 =      [[sg.VStretch()],
+                    [sg.Canvas(size=(200,two)), add_dots(), sg.HSeparator(color="gold"), add_dots(), sg.Canvas(size=(200,two))],
+                       [sg.Canvas(size=(widest_measure,two))],
+                    #[add_dots(), sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch(), add_dots()],
+                    [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 4} bold"), pad=0), sg.Stretch()],
+                    [sg.VStretch()]
+                    ]
+
+    main_contents_vert = [
+            [sg.Column(layout=column_one_vert, justification="center")], [sg.Column(layout=column_two_vert, justification="center")], [sg.Column(layout=column_3, justification="center", expand_x=True)]
+        ]
+
+    layout = [[sg.Frame(title="timer ••", layout=main_contents_vert, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
+
+    window = sg.Window('FARKLE', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=icon_str)
+    window['-TAKE-'].bind("<Return>", "_Enter")
+
+    game_started = False
+
+    while True:
+        #print(f"Dice.by_no at start of window: \n{dice.by_no}")
+        #exit()
+        event, values = window.read(timeout=1000)
+
+        if not game_started:
+
+            clear_held_and_used()
+            colour_buttons()
+            sleep(.5)
+            game_started = True
+            roll_dice()
+            score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
+            update_output_line(text=output_str)
+            if not used_dice:
+                print("BUST!!!!-------------------")
+                print(f"DICE: {dice.dice}")
+                sleep(.8)
+                reset_for_new_turn()
+                game_started = False
+
+        if "die_" in event and game_started:
+            clear_prints()
+            die_inst = get_die_inst(event)
+            if die_inst.used:
+                continue
+            window[event].__getattribute__("metadata")
+            #pos.print_error(f"VALUES FOR EVENT {die_place}: `{window[event].__getattribute__("metadata")}`")
+            #print(window[event].__getattribute__("metadata")) # > reports the metadata field
+            hold_dice(die_inst)#, value = window[event].__getattribute__("metadata"))
+            score, _, output_str = get_score(players.current, set(i for i in dice.dice if i.held), print_result=False, get_score=False, test_only=True)
+            update_output_line(text=output_str)
+            print(f"SCORE: {score}")
+            write_points(players.current.turn_score + score)
+
+        if event == "-START-":
+            game_started = True
+            roll_dice()
+            score, used_dice, _ = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
+            if not used_dice:
+                print("BUST!!!!-------------------")
+                print(f"DICE: {dice.dice}")
+                exit()
+                reset_for_new_turn()
+                game_started = False
+
+        if event == "-ROLL-" and game_started:
+            clear_prints()
+            held_dice = set(i for i in dice.dice if i.held)
+            if not held_dice:
+                update_output_line("You must hold at least one die before rolling.")
+            else:
+                preroll_score, _, _ = get_score(players.current, held_dice, print_result=False, get_score=False)
+                mark_used(held_dice)
+                used_dice = set(i for i in dice.dice if i.used)
+                if used_dice and len(used_dice) == 6:
+                    update_output_line(f"{players.current.name} used all their dice; Rerolling all.")
+                    clear_held_and_used()
+                    colour_buttons()
+
+                roll_dice()
+                score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
+                update_output_line(text=output_str)
+                if not used_dice:
+                    write_points(bust=True)
+                    print("BUST!!!!-------------------")
+                    reset_for_new_turn()
+                    game_started = False
+                else:
+                    players.current.turn_score += preroll_score
+
+
+                #hold_dice(dice_place = i)#, value = window[event].__getattribute__("metadata"))
+
+            #score, used_dice = get_score(players.current, used_dice, print_result=True, get_score=True)
+                #print(window[i].__getattribute__("metadata")) # > reports the metadata field
+
+        if event == "-TAKE-":
+            clear_prints()
+            score, _, _ = get_score(players.current, set(i for i in dice.dice if i.held), print_result=True, get_score=True)
+            print(f"Score from TAKE: {score}")
+            sleep(.5)
+            print(f"Score from player.turn_score: {players.current.turn_score}")
+            sleep(.5)
+            take_roll(players.current)
+            dice.print_updated()
+            reset_for_new_turn()
+            game_started = False
+
+        if event == sg.WIN_CLOSED or event == '-EXIT-':
+            clear_prints()
+            break
+
+        if event == "-SETTINGS-":
+            clear_prints()
+            settings(window) # invis is always starting from False regardless of actual status here.
+
+    window.close()
+    return "exit", None
+
+
+while True:
+
+    make_play_area() # needed for pos initialisation.
+    global players
+    players = playerClass()
+
+    pick_player_names(single_player=True)
+
+    dice.set_default_val()
+    #print(f"Dice.by_no before make_window: \n\n{dice.by_no}")
+    #exit()
+    dice.print_updated()
+    close_window, _ = make_window()
+    if close_window:
+        break
 #main()
