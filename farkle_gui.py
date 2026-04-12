@@ -6,14 +6,14 @@ started April 2026 //  [gui version] v 1.1 // harpoonlobotomy"""
 
 # have commented out to_json throughout, add it back later.
 from time import sleep
+import random
 
 global used_dice
 used_dice = set()
+die_refresh_val = 0.135
+points_to_win = 4000
 
 def make_play_area():
-
-    import os
-    os.system("cls")
 
     #print("\033[s", end='')
     #print("\033[6n", end='') # reports current cursor position
@@ -212,6 +212,8 @@ class dice_data:
         self.dice:set[die] = set()
         self.by_no:dict[int, die] = {}
 
+        self.force_dicerolls = False
+
     def init_dice(self):
 
         for i in range(1, 7):
@@ -266,98 +268,6 @@ class dice_data:
             dice.print_updated(die, skin=print_colour.pre_diceroll)
             sleep(.08)
             print()
-
-
-    def apply_playstyle(self, player:"playerInst", turn_score, available_dice:set["die"]):
-
-        think_aloud = True
-
-        playstyle_rules = {
-
-            "harpoon": {
-                "take_risk": {
-                    "I'm over 2000 points behind": (players.opponent.game_score - 2000) > player.game_score,
-                    "My opponent too close to winning": players.opponent.game_score > 3200,
-                    "I don't have enough score from this roll": player.turn_score + turn_score < 500
-                },
-                "requirements": {
-                    "in_dice": [1, 5],
-                    "all_dice_used": True
-                    }
-            }
-        }
-        use_dice = set()
-        if player.playstyle and player.playstyle in playstyle_rules:
-            for risk_reason in playstyle_rules[player.playstyle]["take_risk"]:
-                if not playstyle_rules[player.playstyle]["take_risk"][risk_reason]:
-                    continue
-                for item in playstyle_rules[player.playstyle]["requirements"]:
-                    if use_dice:
-                        break
-                    if item == "in_dice":
-                        if 1 in playstyle_rules[player.playstyle]["requirements"][item]:
-                            onedice = list(i for i in available_dice if i.value == 1)
-                            if onedice:
-                                use_dice.add(onedice[0])
-                                turn_score = 100
-                            elif 5 in playstyle_rules[player.playstyle]["requirements"][item]:
-                                    onedice = list(i for i in available_dice if i.value == 5)
-                                    if onedice:
-                                        use_dice.add(onedice[0])
-                                        turn_score = 50
-
-        if use_dice:
-            if think_aloud and len(available_dice) > 3:
-                sleep(.02)
-                pos.print_prompt(f"I'll reroll the rest; {risk_reason}")
-                sleep(0.5)
-            #print(f"USE DICE: {use_dice}")
-            return turn_score, use_dice
-
-        return turn_score, None
-
-
-    def roll(self):
-
-        forced_rolls = {
-            #1: [1, 1, 1, 1, 1, 1],
-            1: [1, 1, 1, 2, 3, 2],
-            2: [1, 1, 1, 4, 5, 6],
-            3: [3, 3, 3, 6, 6, 5],
-            4: [1, 2, 3, 4, 5, 6],
-            5: [5, 5, 5, 5, 5, 5]
-        }
-
-        force_dicerolls = False#True
-        if force_dicerolls and forced_rolls.get(players.total_turns):
-            for idx, i in enumerate(forced_rolls[players.total_turns]):
-                for die in self.dice:
-                    if die.place_no == idx+1:
-                        die.value = i
-                        sleep(0.015)
-                        self.print_updated(die)
-                        print()
-                    sleep(0.01)
-
-        else:
-            import random
-            count = 0
-            for die in self.dice:
-                self.print_updated(die)
-            while count < 4:
-                print(pos.dice_line.replace("7f", f"{pos.dice_pos.get(1)}f"))
-                for die in self.dice:
-                    if not die.held and not die.used:
-                        die.value = random.randint(1, 6)
-                        sleep(0.015)
-                        self.print_updated(die)
-                        print()
-                    sleep(0.01)
-
-                self.print_updated()
-                count += 1
-        sleep(0.1)
-
 
     def hold(self, die_inst): # selecting by place_no; if there was a graphic, they would scatter to roll then scoot back to their positions.
 
@@ -522,7 +432,7 @@ class playerClass:
 def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red", player2_col = "blue"):
 
     if players.players:
-        players.players = set() # clear existing players if any (for resetting names, single-player etc.)
+        players.players = set()
 
     if players.is_singleplayer:
         player2 = players.default_playstyle
@@ -541,16 +451,62 @@ def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red"
         players.autoplay = player_2
         player_2.playstyle = players.default_playstyle
 
-            #import random
-            #player_2.playstyle = random.choice(players.playstyles)
-
     return dict({"player_1": player_1, "player_2": player_2})
+
+def apply_playstyle(player:playerInst, turn_score, available_dice:set[die]):
+
+    think_aloud = True
+
+    playstyle_rules = {
+
+        "harpoon": {
+            "take_risk": {
+                f"I'm over {points_to_win/2} points behind": (players.opponent.game_score - (points_to_win/2)) > player.game_score,
+                "My opponent too close to winning": players.opponent.game_score > 3200,
+                "I don't have enough score from this roll": player.turn_score + turn_score < (points_to_win/8)
+            },
+            "requirements": {
+                "in_dice": [1, 5],
+                "all_dice_used": True
+                }
+        }
+    }
+    use_dice = set()
+    if player.playstyle and player.playstyle in playstyle_rules:
+        for risk_reason in playstyle_rules[player.playstyle]["take_risk"]:
+            if not playstyle_rules[player.playstyle]["take_risk"][risk_reason]:
+                continue
+            for item in playstyle_rules[player.playstyle]["requirements"]:
+                if use_dice:
+                    break
+                if item == "in_dice":
+                    if 1 in playstyle_rules[player.playstyle]["requirements"][item]:
+                        onedice = list(i for i in available_dice if i.value == 1)
+                        if onedice:
+                            use_dice.add(onedice[0])
+                            turn_score = 100
+                        elif 5 in playstyle_rules[player.playstyle]["requirements"][item]:
+                                onedice = list(i for i in available_dice if i.value == 5)
+                                if onedice:
+                                    use_dice.add(onedice[0])
+                                    turn_score = 50
+
+    if use_dice:
+        if think_aloud and len(available_dice) > 3:
+            sleep(.02)
+        return turn_score, use_dice
+
+    return turn_score, None
 
 def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get_score=True, test_only=False): # if print_result, send roll to json
     """returns held_score (int) and used_dice (set)"""
     if autoplay_dice:
         dice_selection = set(autoplay_dice)
+    else:
+        dice_selection = set(i for i in dice.dice if i.held and not i.used)
 
+    if not dice_selection:
+        return 0, set(), None
     print_output=None
     matches = {}
     held_score = 0
@@ -568,15 +524,8 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
     elif len(vals) == 5:
         matched = set(i for i in (1, 2, 3, 4, 5) if i in vals)
         if not matched or not len(matched) == 5:
-            #pos.print_error(f"matched 1-5")
-#        if (all("1", "2", "3", "4", "5") in vals):
-        #else:
             matched = list(i for i in (2, 3, 4, 5, 6) if i in vals)
-            #if matched:
-                #pos.print_error(f"matched 2-6")
         if matched and len(matched) == 5:
-            #used_dice.update(set(i for i in dice_selection if len(used_dice) < 5 and i.value in vals and i not in used_dice))#(2, 3, 4, 5, 6) if i in vals)#die for die in dice_selection if die.value == item and die not in used_dice)
-        #elif (all("2", "3", "4", "5", "6") in vals):
             for item in matched:
                 if item not in score_dict.values():
                     for i in dice_selection:
@@ -633,8 +582,8 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
 
     no_playstyle = False#True
     if not no_playstyle:
-        if player and player.playstyle and (used_dice and len(used_dice) != len(dice_selection)): # only for NPC
-            held_score, updated_dice = dice.apply_playstyle(player, held_score, dice_selection)
+        if players.is_singleplayer and player.playstyle and (used_dice and len(used_dice) != len(dice_selection)): # only for NPC
+            held_score, updated_dice = apply_playstyle(player, held_score, dice_selection)
             if updated_dice:
                 used_dice = updated_dice
 
@@ -672,10 +621,13 @@ def update_tally():
         #pos.print_error(f"printed tally for {players.current.name} at count {count}, column {column}", 2)
     #print(END, end='')
 
+def held_die_now_used_die(die_inst:die):
+    die_inst.used = True
+    die_inst.held = False
+
 def mark_used(in_loop):
     for die in in_loop:
-        die.used = True
-        die.held = False
+        held_die_now_used_die(die_inst=die)
 
     in_loop.clear()
 
@@ -686,105 +638,6 @@ def take_roll(player:playerInst):
         to_json.collect_turndata(player, turn_end=True)
 
 
-"""def play_turn(player:playerInst):
-
-    if player.skin:
-        dice.skin = player.skin
-    else:
-        dice.skin = ""
-    player.turn_count += 1
-    pos.print_output(f"{print_colour.playernm(player, "output")} is rolling...")
-    dice.set_default_val()
-    dice.print_updated()
-    dice.roll()
-    to_json.collect_turndata(player, initial_roll=True)
-
-
-    #turn_score = int used holding the score of a single turn,  without considering past turns in this game.
-    #game_score = int used for holding player score for the current game, adding each turn_score when the held dice are added.
-
-    in_loop = set()
-    reserved = 0
-    while True:
-        if players.autoplay and ((isinstance(players.autoplay, playerInst) and player == players.autoplay) or isinstance(players.autoplay, bool)):
-            return autoplay(player)
-
-        #has_potential, _ = dice.auto_best(output_results=False)
-        die_set = in_loop if in_loop else set(i for i in dice.dice if not i.used)
-        #input(f"\n\n\ndie set: {die_set}")
-        has_potential, _, _ = get_score(player, autoplay_dice=die_set, print_result=True if in_loop else False, get_score=False)
-        #pos.print_error(f"HAS POTENTIAL: {has_potential}")
-        if not has_potential:
-            clear_held_and_used()
-            return
-
-        if in_loop:
-            pos.print_prompt("Enter more values to add to the selection, or hit enter to take the selected dice.")
-        else:
-            pos.print_prompt("Enter the values of the dice you want to hold.")
-
-        test = get_input()
-        #pos.print_input(f"        >> {SHOW}")
-        pos.print_prompt(clear=True)
-        if (test or not in_loop) and not len(dice.held_dice) == 6:
-            #input("\n\n\n\n\n\ntest or not in_loop (hit enter)")
-            while test.lower() in ("take", "roll", "t", "r"):
-                test = get_input()
-                #pos.print_input(f"        >> {SHOW}")
-
-            test = test.replace(" ", "")
-            for i, val in enumerate(list(test)):
-            #for i, val in enumerate(test.strip().split(" ")):
-                if not val or val not in ("1", "2", "3", "4", "5", "6"):
-                    continue
-                try:
-                    in_loop = get_dice_by_val(i, val, player, in_loop)
-                except ValueError as e:
-                    pos.print_error(e)
-            dice.print_updated()
-
-        else:
-            pos.print_output(f"Getting score...")
-
-            #has_potential, in_loop = dice.auto_best(output_results=True, is_auto=False)
-            score, _, _ = get_score(player, in_loop)
-
-            mark_used(in_loop)
-
-            dice.print_updated()
-
-            if len(dice.held_dice) == 6:
-                pos.print_prompt("All dice used. Do you want to [reroll] or [take] the current score? (Enter 'reroll' or 'take')")
-                #pos.print_input(f"        >> {SHOW}")
-                test = get_input()
-
-                if test.lower() in ["reroll", "roll", "r"]:
-                    reserved = reserved + score
-                    clear_held_and_used()
-                    do_roll()
-                else:
-                    return take_roll(player)
-
-            else:
-                while True:
-                    pos.print_prompt(f"Do you want to take the points, or continue rolling? (enter `take` or `roll`; defaults to `take` if left blank.)")
-                    test = get_input()
-                    #pos.print_input(f"        >> {SHOW}")
-                    if (test.lower() in ("take", "t", "1")) or not test:
-                        return take_roll(player)
-
-                    elif test.lower() in ("roll", "r", "2"):
-                        do_roll()
-                        break
-                    else:
-                        pos.print_error("Invalid input, please enter `take` or `roll`.")"""
-
-def print_wins():
-    sleep(.3)
-    pos.print_points(f"{print_colour.playernm(players.current, "points")} has won {players.current.wins} game(s).  {print_colour.playernm(players.opponent, "points")} has won {players.opponent.wins} game(s).")
-    print()
-    sleep(.8)
-
 rules = "\nA `straight` (`1, 2, 3, 4, 5, 6`) is 1500 points\nA `small straight` (either `1, 2, 3, 4, 5` or `2, 3, 4, 5, 6`) is 750 points\n" \
 "Three-of-a-kind is `number x 100` (eg `3, 3, 3` is 300 points.)\nFour of a kind is `2x (number x 100)` (eg `3, 3, 3, 3` is 600 points)\n\n" \
 "1's and 5's are special: All other numbers are only valuable as part of one of the combinations above, and cannot be chosen alone.\n" \
@@ -793,52 +646,7 @@ rules = "\nA `straight` (`1, 2, 3, 4, 5, 6`) is 1500 points\nA `small straight` 
 "You must select at least one die each roll. If there is no valid die to select, you will bust, ending your turn and losing your points from that turn.\n" \
 "After selecting one or more die, you can choose to keep the points from those dice, or reroll the dice left over to try to get more points.\n\n" \
 "If you use all of your dice in one turn, you can reroll everything and keep the existing score - as long as you don't bust!\n\n\n" \
-"First player to 4000 points wins!\n"
-
-"""def main():
-
-    global to_json
-    to_json = outputter()
-
-    print(HIDE)
-    make_play_area()
-
-    pos.print_prompt("Do you want to read the rules?")
-    test = get_input()
-    if test and test.lower() in ("y", "yes"):
-        print_rules()
-
-
-    pos.print_prompt("How many human players? Enter '1' or '2'.")
-
-    while True:
-        test = get_input()
-
-        if (test and "1" in test or "2" in test) or not test:
-            if not test or "1" in test:
-                if not test:
-                    pos.print_output(f"Defaulting to one human, one computer. Press 'enter'")
-                    input()
-                    pos.print_output(" ",  clear=True)
-                single_player = True
-            else:
-                single_player = False
-            break
-
-
-    pick_player_names("Player_1", "Player_2")"""
-
-
-"""print()
-    sleep(.2)
-    import os
-    os.system("cls")
-    print()
-    sleep(.2)
-    while True:
-        if do_turns():
-            break"""
-        #pos.print_points(f"{print_colour.playernm(players.current, "points")} has won {players.current.wins} game(s).  {print_colour.playernm(players.opponent, "points")} has won {players.opponent.wins} game(s).")
+f"First player to {points_to_win} points wins! And whoever lost goes first next round.\n"
 
 #### GUI ####
 
@@ -933,9 +741,28 @@ output_line_str = ''
 SYMBOL_UP =    '▲'
 SYMBOL_DOWN =  '▼'
 
+bust_text = {
+    "die_1": "-",
+    "die_2": "B",
+    "die_3": "U",
+    "die_4": "S",
+    "die_5": "T",
+    "die_6": "-",
+}
+
+preroll_text = {
+    "die_1": "F",
+    "die_2": "A",
+    "die_3": "R",
+    "die_4": "K",
+    "die_5": "L",
+    "die_6": "E",
+}
+
 
 tally_text_col = None#"#653635"
 
+png_icon = "farkle_icon.png"
 
 def collapse(layout, key, visible=False):
     """
@@ -970,27 +797,9 @@ def make_window():
         "die_6": ("black", "#7A34B4")
     }
 
-    def colour_buttons(die_inst=None, preroll = False, do_refresh=False, bust=False):
+    def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False):
 
         def _do_colour(die_inst, do_refresh=False, bust=False):
-
-            bust_text = {
-                "die_1": "-",
-                "die_2": "B",
-                "die_3": "U",
-                "die_4": "S",
-                "die_5": "T",
-                "die_6": "-",
-            }
-
-            preroll_text = {
-                "die_1": "F",
-                "die_2": "A",
-                "die_3": "R",
-                "die_4": "K",
-                "die_5": "L",
-                "die_6": "E",
-            }
 
             dice_place = "die_" + str(die_inst.place_no)
 
@@ -1017,7 +826,7 @@ def make_window():
 
             if do_refresh:
                 window.refresh()
-                sleep(.2)
+                sleep(die_refresh_val)
 
         if not die_inst:
             for no in range(1,7):
@@ -1033,45 +842,48 @@ def make_window():
         #dice_place_no = dice_place.replace("die_", '')
         #dice_place_no = int(dice_place_no)
         dice.hold(die_inst)
-        colour_buttons(die_inst, do_refresh=False)
-
-    def identify_die(key_str):
-        if key_str == "die_1":
-            val = die_1
-        if key_str == "die_2":
-            val = die_2
-        if key_str == "die_3":
-            val = die_3
-        if key_str == "die_4":
-            val = die_4
-        if key_str == "die_5":
-            val = die_5
-        if key_str == "die_6":
-            val = die_6
-        return val
+        colour_dice(die_inst, do_refresh=False)
 
     def get_die_inst(key):
         key = key.replace("die_", "")
         inst = dice.by_no[int(key)]
         return inst
 
-    def get_die_val(key_str):
-        val = identify_die(key_str)
-        return val
 
-    def roll_single(i, die_inst, do_refresh=False):
-        import random
-        if not die_inst.held and not die_inst.used:
-            die_inst.value = random.randrange(1,7)
-        #print(f"VALUES FOR EVENT {i}:")
-        #print(f"VALUE: {die.ButtonText}")
-        window[i].__setattr__("metadata", str(die_inst.value))
-        #window[i].__setattr__("button_text", str(roll_outcome))
-        #sset_die_val(i, roll_outcome)
-        window[i].update(die_inst.value)
-        colour_buttons(die_inst, do_refresh=do_refresh)
+    def update_die_val_and_colour(new_value, die_inst, do_refresh=True, die_place=None):
 
-    def roll_dice(used_dice=None, do_refresh=False):
+        die_inst.value = new_value
+        if not die_place:
+            die_place = "die_" + str(die_inst.place_no)
+        window[die_place].__setattr__("metadata", str(die_inst.value))
+        window[die_place].update(die_inst.value)
+        colour_dice(die_inst, do_refresh=do_refresh)
+        sleep(die_refresh_val)
+
+    def roll_single(die_place_no, die_inst, do_refresh=False):
+
+        if die_inst.held or die_inst.used:
+            sleep(.05)
+            return
+
+        forced_rolls = {
+            #1: [1, 1, 1, 1, 1, 1],
+            #1: [1, 1, 1, 2, 3, 2]
+            0: [1, 2, 3, 4, 5, 6],
+            1: [1, 2, 2, 3, 3, 4]
+        }
+
+        if dice.force_dicerolls and forced_rolls.get(players.total_turns):
+            for idx, new_value in enumerate(forced_rolls[players.total_turns]):
+                if die_inst.place_no == idx+1:
+                    update_die_val_and_colour(new_value, die_inst, do_refresh=do_refresh)
+                    if idx == 5:
+                        dice.force_dicerolls = False
+                    return
+
+        update_die_val_and_colour(random.randrange(1,7), die_inst, do_refresh=True, die_place=die_place_no)
+
+    def roll_dice(used_dice=None, do_refresh=False) -> None:
 
         for i, die_inst in dice_dict.items():
             if used_dice:
@@ -1090,13 +902,14 @@ def make_window():
 
     def make_die(key_str:str="1"):
 
-        val = get_die_val(key_str)
-
+        val = int(key_str.replace("die_", ""))
+        text = preroll_text[key_str]
+        colour = preroll_cols[key_str]
         #key_upper = str(key_str).upper()
         key_str = key_str#str("die_" + key_upper)
         #sg.Button("Hello", , use_ttk_buttons=True)
-        image_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````\x00\x00\x00\x05\x00\x01\xa5\xf6E@\x00\x00\x00\x00IEND\xaeB`\x82'
-        button = sg.Button(button_text=str(val), button_color=button_std, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
+        #image_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````\x00\x00\x00\x05\x00\x01\xa5\xf6E@\x00\x00\x00\x00IEND\xaeB`\x82'
+        button = sg.Button(button_text=text, button_color=colour, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
         dice_dict[key_str] = get_die_inst(key_str)
         return button
 
@@ -1112,10 +925,11 @@ def make_window():
 
         def new_game_window():
             new_game_layout = [
-                [sg.Text(f"{winner.name} wins this round with {winner.game_score} points!", font=(f"courier {std_dot_size} bold"))],
+                [sg.Stretch(), sg.Text(f"{winner.name} wins this round with", font=(f"courier {std_dot_size + 2} bold")), sg.Stretch()],
+                [sg.Stretch(), sg.Text(f"{winner.game_score} points!", font=(f"courier {std_dot_size + 2} bold")), sg.Stretch()],
                 [sg.VStretch()],
-                [sg.Text("New Game?", font=(f"courier {std_dot_size} bold"), text_color=tally_text_col)],
-                [sg.Button("Yes", key="-NEW_GAME_YES-", use_ttk_buttons=True, size=(10,2), font=(f"courier {std_dot_size} bold")), sg.Button("No", key="-NEW_GAME_NO-", use_ttk_buttons=True, size=(10,2), font=(f"courier {std_dot_size} bold"))],
+                [sg.Text("New Game?", font=(f"courier {std_dot_size+2} bold"))],
+                [sg.Button("Yes", key="-NEW_GAME_YES-", use_ttk_buttons=True, size=(8,1), font=(f"courier {std_dot_size +2} bold")), sg.Button("No", key="-NEW_GAME_NO-", use_ttk_buttons=True, size=(8,1), font=(f"courier {std_dot_size +2} bold"))],
                 [sg.Text('', font=(f"courier {std_dot_size} bold"), key="newgame_print")],
                 [sg.VStretch()],
             ]
@@ -1140,16 +954,17 @@ def make_window():
             players.tally = {}
             window["print_player_stats"].update(f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
 
-            colour_buttons(preroll=True, do_refresh=True)
+            colour_dice(preroll=True, do_refresh=True)
             window["output_line"].update("Starting a new game!")
             window.refresh()
+
         else:
             window["output_line"].update(f"Thanks for playing! Final scores: {players.player_1.name}: {players.player_1.game_score} points, {players.player_1.wins} games won / {players.player_2.name}: {players.player_2.game_score} points, {players.player_2.wins} games won")
             return "game_over"
 
 
     def reset_for_new_turn():
-        print(f"turn {players.total_turns} / score in reset for new turn: {score}")
+        """Returns "end_game" if not starting a new game, "new_game" if starting a new game."""
         update_tally()
         tally_entries, tally_entries_second = update_tally_entries()
         window["tally_table_P1"].update(tally_entries)
@@ -1164,20 +979,17 @@ def make_window():
         players.current.roll_count = 0
         players.opponent.roll_count = 0
 
-        if players.current.game_score >= 4000:
+        if players.current.game_score >= points_to_win:
             if round_over(winner=players.current):
                 return "end_game"
-            else:
-                return "new_game"
 
         players.current, players.opponent = players.opponent, players.current
 
         clear_held_and_used_dice()
 
-        #for die_inst in dice.dice:
-            #window[f"die_{str(die_inst.place_no)}"].update(str(die_inst.value))
-        colour_buttons(preroll=True, do_refresh=True)
+        colour_dice(preroll=True, do_refresh=True)
         window["print_player_stats"].update(f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
+
 
     def print_points_line(score='', bust=False, string_print=''):
 
@@ -1199,8 +1011,10 @@ def make_window():
         window["output_line"].update(output_line_str)
 
     def clear_prints():
+
         print_points_line()
         print_output_text()
+
 
     def take_score_and_end_turn(get_turnscore = True):
         clear_prints()
@@ -1209,16 +1023,8 @@ def make_window():
             score, _, _ = get_score(players.current, set(i for i in dice.dice if i.held), print_result=True, get_score=True)
         take_roll(players.current)
         outcome = reset_for_new_turn()
-        if outcome and outcome == "end_game":
-            return "game_over"
+        return outcome
 
-    def game_won(player):
-
-        print_points_line(string_print=f"{player.name} has won with {player.game_points}!")
-
-        for p in players.players:
-            p.game_score = 0
-            p.turn_count = 0
 
     def gui_autoplay(player:playerInst, used_dice):
         """for player_2 to be PC controlled."""
@@ -1247,7 +1053,6 @@ def make_window():
 
             has_potential, used_dice, output_text = get_score(player, unused_dice, print_result=False, get_score=False)
 
-
             #has_potential, used_dice = dice.auto_best(player)
             #pos.print_error(f"HAS POTENTIAL: {has_potential}")# USED DICE: {used_dice}")
             #has_potential = dice.dice_potential(starting=True)
@@ -1256,22 +1061,26 @@ def make_window():
                 return "bust", None
                 #return end_turn(player)
 
-            for i in used_dice:
-                i.held = True
-                colour_buttons(i, do_refresh=True)
-                sleep(.1)
+            for _, inst in dice_dict.items():
+                if inst in used_dice:
+                    inst.held = True
+                    colour_dice(inst, do_refresh=True)
+                    sleep(.3)
+
 
             score, used_dice, output_text = get_score(player, used_dice)
+            for _, inst in dice_dict.items():
+                if inst in used_dice:
+                    print_output_text(text=output_text)
+                    held_die_now_used_die(die_inst=inst)
+                    colour_dice(inst, do_refresh=True)
+                    sleep(.3)
 
-            for i in used_dice:
-                print_output_text(text=output_text)
-                colour_buttons(i, do_refresh=True)
-                sleep(.2)
             print_points_line(score)
             #print_points_line(players.current.turn_score)
             window.refresh()
 
-            mark_used(used_dice)
+            #mark_used(used_dice)
 
             used_dice_count = sum(1 for d in dice.dice if d.used)
 
@@ -1288,24 +1097,27 @@ def make_window():
                             i.used = True
                             used_dice.add(i)
 
-            for i in used_dice:
-                print_output_text(text=output_text)
-                window.refresh()
-                colour_buttons(i, do_refresh=True)
-                sleep(.2)
+            mark_used(used_dice)
+            for _, inst in dice_dict.items():
+                if inst in used_dice:
+                    print_output_text(text=output_text)
+                    colour_dice(inst, do_refresh=True)
+                    window.refresh()
+                    sleep(.3)
 
             used_dice_count = sum(1 for d in dice.dice if d.used)
 
             if (used_dice_count) == 6:
-                if (player.game_score + player.turn_score >= 4000) or player.turn_score > 1000:
+                if (player.game_score + player.turn_score >= points_to_win) or player.turn_score > points_to_win/4:
                     print_output_text(f"{players.current.name} used all their dice and is taking the current score.")
                     window.refresh()
-                    return "game_won", None
+                    return "end_turn", None
+
                 print_output_text(f"{players.current.name} used all their dice; rerolling all.")
                 clear_held_and_used_dice()
 
             else:
-                if (used_dice_count < 4 and (player.game_score + player.turn_score < 4000)) or player.turn_score < 500:
+                if (used_dice_count < 4 and (player.game_score + player.turn_score < points_to_win)) or player.turn_score < points_to_win/8:
                     window["output_line"].update("Rolling again.")
                     #pos.print_output("Roll done, checking for potential...")
                 else:
@@ -1362,6 +1174,17 @@ def make_window():
 
         _, _ = rules_window.read(timeout=1000)
 
+    def clear_print_lines_before_close(): # commented parts useful for the exit routine, but not for the general use this fn has.
+        sleep(.8)
+        window["print_player_stats"].update("")
+        print_points_line()
+        window.refresh()
+        sleep(.3)
+        print_output_text()
+        sleep(2)
+        window.refresh()
+        sleep(.5)
+
 
     dice_display = [[make_die("die_1"),#counter_text("die_1", None, 1),
                     sg.Column(layout=mid_gap()),
@@ -1378,7 +1201,7 @@ def make_window():
 
     tally_board = [get_tally()]#, sg.Table(values = [[1]], key="tally_table_P2", display_row_numbers=True, starting_row_number=1, headings=[f"{players.opponent.name}"], expand_x=True, hide_vertical_scroll=True, def_col_width = 40, auto_size_columns=False)]]
 
-    column_one_vert = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc.\nNOTE: Changing to single/two player will reset the game."), add_dots(), make_button(width=std_btn, height=1, key_str="RULES"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
+    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc.\nNOTE: Changing to single/two player will reset the game."), add_dots(), make_button(width=std_btn, height=1, key_str="RULES"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
                        [sg.Canvas(size=(widest_measure,two))],
                        [sg.HSeparator(color="gold")],
                        [sg.Stretch(), sg.Text(text=f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}", key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0), sg.Stretch()],
@@ -1387,7 +1210,7 @@ def make_window():
                      sg.Column(key="dice_layout", layout=dice_display, justification="c", vertical_alignment="center"),
                      sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center")]]
 
-    column_two_vert = [[sg.Canvas(size=(widest_measure,two), pad=two)],
+    point_output = [[sg.Canvas(size=(widest_measure,two), pad=two)],
                     [sg.HSeparator(color="gold")],
                     #[sg.Canvas(size=(widest_measure,five))],
                     [sg.Canvas(size=(widest_measure,two), pad=two)],
@@ -1398,7 +1221,7 @@ def make_window():
                     [sg.HSeparator(color="gold")],
                     ]
 
-    column_3 =      [
+    roll_take_and_output_print =      [
                      [
                      sg.Stretch(), sg.Column(layout=make_horz_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), pad=0),
                      make_button(width=std_btn, height=1, key_str="Roll"), make_button(width=std_btn, height=1, key_str="Take"),
@@ -1409,7 +1232,7 @@ def make_window():
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
                      [sg.HSeparator(color="gold")],
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 4} bold"), pad=0), sg.Stretch()],
+                    [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0), sg.Stretch()],
                     [sg.Canvas(size=(200,two)), add_dots(), sg.HSeparator(color="gold"), add_dots(), sg.Canvas(size=(200,two))],
                        [sg.Canvas(size=(widest_measure,two))],
                     #[add_dots(), sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch(), add_dots()],
@@ -1421,16 +1244,16 @@ def make_window():
             [collapse(tally_board, '-SEC1-')]
             ]
 
-    main_contents_vert = [
-            [sg.Column(layout=column_one_vert, justification="center")], [sg.Column(layout=column_two_vert, justification="center")], [sg.Column(layout=column_3, justification="center", expand_x=True)], [sg.Column(layout=tally, justification="center")]
+    farkle_main_screen = [
+            [sg.Column(layout=settings_rules_and_exit, justification="center")], [sg.Column(layout=point_output, justification="center")], [sg.Column(layout=roll_take_and_output_print, justification="center", expand_x=True)], [sg.Column(layout=tally, justification="center")]
         ]
 
-    layout = [[sg.Frame(title=" farkle ••", layout=main_contents_vert, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
+    layout = [[sg.Frame(title=" farkle ••", layout=farkle_main_screen, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-    window = sg.Window('FARKLE', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=icon_str)
+    window = sg.Window('FARKLE', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=png_icon)
     window['-TAKE-'].bind("<Return>", "_Enter")
 
-    colour_buttons(preroll=True)
+    colour_dice(preroll=True)
     game_started = False
     round_started = False
     opened1 = False
@@ -1447,25 +1270,34 @@ def make_window():
 
     while True:
 
-        colour_buttons(preroll=True if not round_started else False, do_refresh=False if round_started else True)
+        if not window.is_closed():
+            colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True)
 
         event, values = window.read(timeout=1000)
+
+        if event == sg.WIN_CLOSED or event == '-EXIT-':
+            if not window.is_closed():
+                clear_prints()
+            break
 
         used_dice = None
         if players.is_singleplayer and players.current == players.player_2:
             round_started = True
             outcome, used_dice = gui_autoplay(players.current, used_dice) # game_won end_turn bust
             if outcome:
-                print(f"OUTCOME of turn {players.total_turns}: {outcome}")
+                #print(f"OUTCOME of turn {players.total_turns}: {outcome}")
                 if outcome == "end_turn":
                     round_started = take_score_and_end_turn(get_turnscore=False)
-                    if round_started and round_started == "game_over":
-                        break
+                    if round_started and round_started == "end_game":
+                        clear_print_lines_before_close()
+                        window.close()
+                        return "exit", None
+                        #break
 
                 elif outcome == "bust":
                     print_points_line(bust=True)
                     print("autoplay should show busted")
-                    colour_buttons(do_refresh=True, bust=True)
+                    colour_dice(do_refresh=True, bust=True)
                     window.refresh()
                     print("autoplay should show busted")
                     sleep(.5)
@@ -1474,8 +1306,7 @@ def make_window():
                     reset_for_new_turn()
                     round_started = False
                 elif outcome == "game_won":
-                    game_won(players.current)
-                    exit()
+                    round_over(players.current)
 
         if not round_started:
 
@@ -1490,12 +1321,12 @@ def make_window():
             print_output_text(text=output_str)
             if not used_dice:
                 print_points_line(bust=True)
-                colour_buttons(do_refresh=True, bust=True)
+                colour_dice(do_refresh=True, bust=True)
                 sleep(.8)
                 reset_for_new_turn()
                 round_started = False
 
-        if event.startswith('-OPEN SEC1-'):
+        if event and event.startswith('-OPEN SEC1-'):
             opened1 = not opened1
             window['-OPEN SEC1-'].update(SYMBOL_DOWN if opened1 else SYMBOL_UP)
             window['-SEC1-'].update(visible=opened1)
@@ -1527,13 +1358,14 @@ def make_window():
                     print_output_text(f"{players.current.name} used all their dice; rerolling all.")
                     clear_held_and_used_dice()
                     #colour_buttons()
-
-                roll_dice(used_dice, do_refresh=True)
+                    roll_dice(do_refresh=True)
+                else:
+                    roll_dice(used_dice, do_refresh=True)
                 score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
                 print_output_text(text=output_str)
                 if not used_dice:
                     print_points_line(bust=True)
-                    colour_buttons(do_refresh=True, bust=True)
+                    colour_dice(do_refresh=True, bust=True)
                     sleep(.8)
                     reset_for_new_turn()
                     round_started = False
@@ -1542,12 +1374,10 @@ def make_window():
 
         if event == "-TAKE-":
             round_started = take_score_and_end_turn()
-            if round_started and round_started == "game_over":
+            if round_started and round_started == "end_game":
+                clear_print_lines_before_close()
+                return "exit", None
                 break
-
-        if event == sg.WIN_CLOSED or event == '-EXIT-':
-            clear_prints()
-            break
 
         if event == "-SETTINGS-":
             clear_prints()
@@ -1557,8 +1387,11 @@ def make_window():
         if event == "-RULES-":
             rules_window()
 
+    #TODO
+    """if window.get_screen_dimensions() and window.get_screen_dimensions() != (None, None):   #fullscreen version"""
 
-    window.close()
+    if not window.is_closed():
+        window.close()
     return "exit", None
 
 
@@ -1785,7 +1618,7 @@ def main_gui():
     make_play_area() # needed for pos initialisation.
     global players
     players = playerClass()
-    pick_player_names("Player_1", "Player_2")
+    init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red", player2_col = "blue")
 
     while True:
 
