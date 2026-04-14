@@ -7,9 +7,13 @@ started April 2026 //  [gui version] v 1.1 // harpoonlobotomy"""
 # have commented out to_json throughout, add it back later.
 from time import sleep
 import random
+import FreeSimpleGUI as sg
 
 die_refresh_val = 0.135
 points_to_win = 4000
+
+
+window_is_closed = False
 
 class settings:
 
@@ -38,10 +42,52 @@ class settings:
 
 class theme_data():
 
-    def __init__(self, background, text, highlight):
-        self.background = background
-        self.text = text
-        self.highlight = highlight
+    def __init__(self, theme_name):
+        self.BACKGROUND:str = theme_name
+
+    def init_themes(self):
+
+        eggplant = "#3E2857",
+        navy = "#284157"
+        ivory = "#E0DAC5"
+
+        farkle_navy = {'BACKGROUND': navy,
+                        'TEXT': "#B08F23",#"#25775f",
+                        'INPUT': "#45523F",
+                        'TEXT_INPUT': "#f5db74",
+                        'SCROLL': "#003e9b",
+                        'BUTTON': ('black', "#F8DC5E"),
+                        'PROGRESS': ('#01826B', '#D0D0D0'),
+                        'BORDER': 3,
+                        'SLIDER_DEPTH': 0,
+                        'PROGRESS_DEPTH': 0,
+                        'dot_colour': "#B08F23",
+                        'font': "courier 14 bold",
+                        "alt_tally_bg": "#332b26",
+                        "title_bg": navy,
+                        "gold_text": "#ffd768"}
+
+        farkle_tan = {'BACKGROUND': ivory,
+                        'TEXT': "#25775f",
+                        'INPUT': "#45523F",
+                        'TEXT_INPUT': "#f5db74",
+                        'SCROLL': "#003e9b",
+                        'BUTTON': ('black', "#F8DC5E"),
+                        'PROGRESS': ('#01826B', '#D0D0D0'),
+                        'BORDER': 3,
+                        'SLIDER_DEPTH': 0,
+                        'PROGRESS_DEPTH': 0,
+                        'dot_colour': "#332b26",
+                        'font': "courier 14 bold",
+                        "alt_tally_bg": "#CDC9A6",
+                        "title_bg": ivory,
+                        "gold_text": "#442D15"
+                        }
+
+
+        sg.theme_add_new('farkle_tan', farkle_tan)
+        sg.theme_add_new('farkle_navy', farkle_navy)
+        #sg.theme('farkle_tan')
 
 
 def init_settings():
@@ -54,6 +100,121 @@ def init_settings():
 
     settings_dict = check_for_settings_file()
     settings.init(settings, settings_dict)
+
+    theme_name = settings_dict["user_set"]["game_theme"] if settings_dict["user_set"].get("game_theme") else settings_dict["defaults"]["game_theme"]
+    if "farkle_" in theme_name:
+        theme_name = theme_name.replace("farkle_", "")
+    theme_data(theme_name)
+    theme_data.init_themes(theme_data)
+    sg.theme(f'farkle_{theme_name}')
+
+eggplant = "#3E2857",
+navy = "#284157"
+ivory = "#E0DAC5"
+
+farkle_navy = {'BACKGROUND': navy,
+                'TEXT': "#B08F23",#"#25775f",
+                'INPUT': "#45523F",
+                'TEXT_INPUT': "#f5db74",
+                'SCROLL': "#003e9b",
+                'BUTTON': ('black', "#F8DC5E"),
+                'PROGRESS': ('#01826B', '#D0D0D0'),
+                'BORDER': 3,
+                'SLIDER_DEPTH': 0,
+                'PROGRESS_DEPTH': 0,
+                'dot_colour': "#B08F23",
+                'font': "courier 14 bold",
+                "alt_tally_bg": "#332b26",
+                "title_bg": navy,
+                "gold_text": "#ffd768"}
+
+farkle_tan = {'BACKGROUND': ivory,
+                'TEXT': "#25775f",
+                'INPUT': "#45523F",
+                'TEXT_INPUT': "#f5db74",
+                'SCROLL': "#003e9b",
+                'BUTTON': ('black', "#F8DC5E"),
+                'PROGRESS': ('#01826B', '#D0D0D0'),
+                'BORDER': 3,
+                'SLIDER_DEPTH': 0,
+                'PROGRESS_DEPTH': 0,
+                'dot_colour': "#332b26",
+                'font': "courier 14 bold",
+                "alt_tally_bg": "#CDC9A6",
+                "title_bg": ivory,
+                "gold_text": "#442D15"
+                }
+
+
+sg.theme_add_new('farkle_tan', farkle_tan)
+sg.theme_add_new('farkle_navy', farkle_navy)
+#sg.theme('farkle_tan')
+sg.theme('farkle_navy')
+
+theme_dict = {}
+theme_dict["farkle_tan"] = farkle_tan
+theme_dict["farkle_navy"] = farkle_navy
+std_dot_size=10
+widest_measure = 340
+half_measure = (widest_measure/2)-5
+std_btn = 10
+num_pad_w = 20
+num_pad_h = 8
+numbers_size = 40
+border_lg = 6
+size_text="small"
+small_hide=False
+tooltip_str="Press to change to small version"
+restart_str="[Restart]"
+pause_str="[Paused]"
+
+bg_brown="#332b26"
+bg_blue = "#36554E"#"darkblue"
+numbers_colour="yellow"
+button_mouseover="#105C26"
+button_held = "#F8DC5E"
+button_used = "#666354"
+#player_1_die = settings.player1_col#"#5AC280"
+#player_2_die = settings.player2_col#"#5A90C2"
+
+die_bust_col = ('white', "#330303")
+
+dice_dict = {}
+
+die_1 = 1
+die_2 = 2
+die_3 = 3
+die_4 = 4
+die_5 = 5
+die_6 = 6
+
+point_value = ''
+output_line_str = ''
+
+SYMBOL_UP =    '▲'
+SYMBOL_DOWN =  '▼'
+
+bust_text = {
+    "die_1": "-",
+    "die_2": "B",
+    "die_3": "U",
+    "die_4": "S",
+    "die_5": "T",
+    "die_6": "-",
+}
+
+preroll_text = {
+    "die_1": "F",
+    "die_2": "A",
+    "die_3": "R",
+    "die_4": "K",
+    "die_5": "L",
+    "die_6": "E",
+}
+
+tally_text_col = None#"#653635"
+
+png_icon = "farkle_icon.png"
 
 
 def make_play_area():
@@ -461,8 +622,13 @@ def restore_defaults():
     settings_dict = to_json.load_json("settings")
 
     for item in settings_dict["defaults"]:
-        print(f"item in default dict: {settings_dict['defaults'][item]} // item: {item}")
+        #print(f"item in default dict: {settings_dict['defaults'][item]} // item: {item}")
         setattr(settings, item, settings_dict["defaults"][item])
+
+    theme_name = settings_dict["defaults"]["game_theme"]
+    if "farkle_" in theme_name:
+        theme_name = theme_name.replace("farkle_", "")
+    sg.theme(f'farkle_{theme_name}')
 
     settings_dict["user_set"] = {}
 
@@ -475,7 +641,6 @@ def restore_defaults():
     self.is_singleplayer = settings_dict["defaults"]["is_singleplayer"]
     self.computer_think_aloud = settings_dict["defaults"]["computer_think_aloud"]
     self.output_file = settings_dict["defaults"]["output_file"]"""
-
 
 class playerInst:
 
@@ -747,117 +912,6 @@ f"First player to {points_to_win} points wins! And whoever lost goes first next 
 
 #https://github.com/PySimpleGUI/PySimpleGUI/issues/4909 <- change button bg col and button mouseover col.
 
-import FreeSimpleGUI as sg
-eggplant = "#3E2857",
-navy = "#284157"
-ivory = "#E0DAC5"
-
-farkle_navy = {'BACKGROUND': navy,
-                'TEXT': "#B08F23",#"#25775f",
-                'INPUT': "#45523F",
-                'TEXT_INPUT': "#f5db74",
-                'SCROLL': "#003e9b",
-                'BUTTON': ('black', "#F8DC5E"),
-                'PROGRESS': ('#01826B', '#D0D0D0'),
-                'BORDER': 3,
-                'SLIDER_DEPTH': 0,
-                'PROGRESS_DEPTH': 0,
-                'dot_colour': "#B08F23",
-                'font': "courier 14 bold",
-                "alt_tally_bg": "#332b26",
-                "title_bg": navy,
-                "gold_text": "#ffd768"}
-
-farkle_tan = {'BACKGROUND': ivory,
-                'TEXT': "#25775f",
-                'INPUT': "#45523F",
-                'TEXT_INPUT': "#f5db74",
-                'SCROLL': "#003e9b",
-                'BUTTON': ('black', "#F8DC5E"),
-                'PROGRESS': ('#01826B', '#D0D0D0'),
-                'BORDER': 3,
-                'SLIDER_DEPTH': 0,
-                'PROGRESS_DEPTH': 0,
-                'dot_colour': "#332b26",
-                'font': "courier 14 bold",
-                "alt_tally_bg": "#CDC9A6",
-                "title_bg": ivory,
-                "gold_text": "#442D15"
-                }
-
-
-
-sg.theme_add_new('farkle_tan', farkle_tan)
-sg.theme_add_new('farkle_navy', farkle_navy)
-#sg.theme('farkle_tan')
-sg.theme('farkle_navy')
-
-theme_dict = {}
-theme_dict["farkle_tan"] = farkle_tan
-theme_dict["farkle_navy"] = farkle_navy
-std_dot_size=10
-widest_measure = 340
-half_measure = (widest_measure/2)-5
-std_btn = 10
-num_pad_w = 20
-num_pad_h = 8
-numbers_size = 40
-border_lg = 6
-five = 5
-two = 2
-size_text="small"
-small_hide=False
-tooltip_str="Press to change to small version"
-restart_str="[Restart]"
-pause_str="[Paused]"
-
-bg_brown="#332b26"
-bg_blue = "#36554E"#"darkblue"
-numbers_colour="yellow"
-button_mouseover="#105C26"
-button_held = "#F8DC5E"
-button_used = "#666354"
-#player_1_die = settings.player1_col#"#5AC280"
-#player_2_die = settings.player2_col#"#5A90C2"
-
-die_bust_col = ('white', "#330303")
-
-dice_dict = {}
-
-die_1 = 1
-die_2 = 2
-die_3 = 3
-die_4 = 4
-die_5 = 5
-die_6 = 6
-
-point_value = ''
-output_line_str = ''
-
-SYMBOL_UP =    '▲'
-SYMBOL_DOWN =  '▼'
-
-bust_text = {
-    "die_1": "-",
-    "die_2": "B",
-    "die_3": "U",
-    "die_4": "S",
-    "die_5": "T",
-    "die_6": "-",
-}
-
-preroll_text = {
-    "die_1": "F",
-    "die_2": "A",
-    "die_3": "R",
-    "die_4": "K",
-    "die_5": "L",
-    "die_6": "E",
-}
-
-tally_text_col = None#"#653635"
-
-png_icon = "farkle_icon.png"
 
 def collapse(layout, key, visible=False):
     """
@@ -897,6 +951,8 @@ def make_window():
         def _do_colour(die_inst, do_refresh=False, bust=False):
 
             dice_place = "die_" + str(die_inst.place_no)
+            #window[dice_place].update(button_color="white")
+            #sleep(.02)
 
             if bust:
                 window[dice_place].update(bust_text[dice_place])
@@ -904,6 +960,9 @@ def make_window():
 
             else:
                 if preroll:
+                    window[dice_place].update(preroll_text[dice_place], button_color="white")
+                    window.refresh()
+                    sleep(.075)
                     colour = preroll_cols[dice_place]
                     window[dice_place].update(preroll_text[dice_place], button_color=colour)
                     #window[dice_place].update()
@@ -948,10 +1007,13 @@ def make_window():
         die_inst.value = new_value
         if not die_place:
             die_place = "die_" + str(die_inst.place_no)
-        window[die_place].__setattr__("metadata", str(die_inst.value))
-        window[die_place].update(die_inst.value)
-        colour_dice(die_inst, do_refresh=do_refresh)
-        sleep(die_refresh_val)
+        try:
+            window[die_place].__setattr__("metadata", str(die_inst.value))
+            window[die_place].update(die_inst.value)
+            colour_dice(die_inst, do_refresh=do_refresh)
+            sleep(die_refresh_val)
+        except:
+            print()
 
     def roll_single(die_place_no, die_inst, do_refresh=False):
 
@@ -966,6 +1028,7 @@ def make_window():
             1: [1, 2, 2, 3, 3, 4]
         }
 
+
         if dice.force_dicerolls and forced_rolls.get(players.total_turns):
             for idx, new_value in enumerate(forced_rolls[players.total_turns]):
                 if die_inst.place_no == idx+1:
@@ -977,6 +1040,7 @@ def make_window():
         update_die_val_and_colour(random.randrange(1,7), die_inst, do_refresh=True, die_place=die_place_no)
 
     def roll_dice(used_dice=None, do_refresh=False) -> None:
+
 
         for i, die_inst in dice_dict.items():
             if used_dice:
@@ -1236,22 +1300,17 @@ def make_window():
         return tally_entries, tally_entries_second
 
     def get_tally():
-    #    players.tally[players.total_turns] = (players.current.name, players.current.game_score)
         tally_entries, tally_entries_second = update_tally_entries()
         col_width = (len(players.player_1.name) if players.player_1.name and len(players.player_1.name) > len(players.player_2.name) else len(players.player_2.name)) + len("Turn x:   = xxxx points")
 
-        tally_alt:str = theme_dict[sg.theme()]["alt_tally_bg"] # so it fetches when rendered, not at run init
+        tally_alt:str = theme_dict[sg.theme()]["alt_tally_bg"]
         tally_bg:str = theme_dict[sg.theme()]["BACKGROUND"]
 
         return [sg.Stretch(), sg.Table(values = [tally_entries], key="tally_table_P1", display_row_numbers=False, headings=[''], expand_y=True, hide_vertical_scroll=True, def_col_width = col_width, auto_size_columns=False, justification="left", background_color=tally_bg, alternating_row_color=tally_alt, text_color=tally_text_col, row_height=22), sg.Table(values = [tally_entries_second], key="tally_table_P2", display_row_numbers=False, headings=[''], expand_y=True, hide_vertical_scroll=True, def_col_width = col_width, auto_size_columns=False, visible=tally_alt if tally_entries_second else False, justification="left", background_color=tally_bg, alternating_row_color=tally_alt, text_color=tally_text_col), sg.Stretch()]
 
     def rules_window(): #separate window so it can be left open during play if desired
-        rules_panel = [[sg.Canvas(size=(widest_measure,two), pad=two)],
-
-                    #[sg.HSeparator(color="gold"), sg.Text(text=" -- RULES-- ", justification="center", text_color=theme_dict[sg.theme()]["gold_text"]), sg.HSeparator(color="gold")],
-                    #[sg.HSeparator(color="gold")],
-                    #[sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_dict[sg.theme()]["gold_text"], justification="center")],#, font=(f"courier {int(std_dot_size)} bold"))],
+        rules_panel = [[sg.Canvas(size=(widest_measure,2), pad=2)],
+                    [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_dict[sg.theme()]["gold_text"], justification="center")],
                     [sg.Stretch(), sg.Text(text="[ Note: You can keep the rules open while you play if you like. ]", justification="right")]
                     ]
 
@@ -1259,11 +1318,11 @@ def make_window():
 
         rules_layout = [[sg.Frame(title="", key="rules_window", layout=rules_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-        rules_window = sg.Window(' farkle rules ••', rules_layout, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
+        rules_window = sg.Window(' farkle rules ••', rules_layout, enable_close_attempted_event=True, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
 
         _, _ = rules_window.read(timeout=1000)
 
-    def clear_print_lines_before_close(): # commented parts useful for the exit routine, but not for the general use this fn has.
+    def clear_print_lines_before_close():
         sleep(.8)
         window["print_player_stats"].update("")
         print_points_line()
@@ -1275,7 +1334,7 @@ def make_window():
         sleep(.5)
 
 
-    dice_display = [[make_die("die_1"),#counter_text("die_1", None, 1),
+    dice_display = [[make_die("die_1"),
                     sg.Column(layout=mid_gap()),
                     make_die("die_2"),
                     sg.Column(layout=mid_gap()),
@@ -1288,12 +1347,9 @@ def make_window():
                     make_die("die_6"),
                     ]]
 
-    tally_board = [get_tally()]#, sg.Table(values = [[1]], key="tally_table_P2", display_row_numbers=True, starting_row_number=1, headings=[f"{players.opponent.name}"], expand_x=True, hide_vertical_scroll=True, def_col_width = 40, auto_size_columns=False)]]
+    tally_board = [get_tally()]
 
     settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc."), add_dots(), make_button(width=std_btn, height=1, key_str="Rules"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
-                    #[sg.Canvas(size=(widest_measure,1))],
-                    #[sg.HSeparator(color="gold")],
-                    #scoreline text == f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}"
                     [sg.Stretch(), sg.Text(text=players.scoreline(), key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), text_color=theme_dict[sg.theme()]["gold_text"], pad=0, justification="center", size=(60,2)), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2))],
                     [sg.HSeparator(color="gold")],
@@ -1305,12 +1361,9 @@ def make_window():
     text_width = len("points from this roll: 1111 / current turn score: 1111")
     point_output = [
                     [sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch()],
-                    #[sg.Canvas(size=(widest_measure,five))],
-                    [sg.Canvas(size=(widest_measure,two), pad=two)],
-                     #sg.InputText(default_text='', size=(int(std_dot_size)+6, int(std_dot_size)*2), border_width=two, focus=False, enable_events=True, justification="c", font=("courier", std_dot_size, "bold"),
-                     #   key='-INPUT-', tooltip="Enter the dice values you wish to hold."),
+                    [sg.Canvas(size=(widest_measure,2), pad=2)],
                     [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), size=(text_width, 1), pad=0, justification="center"), sg.Stretch()],
-                    [sg.Canvas(size=(widest_measure,two), pad=two)],
+                    [sg.Canvas(size=(widest_measure,2), pad=2)],
                     [sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch()]
                     ]
 
@@ -1322,13 +1375,12 @@ def make_window():
                      sg.Stretch(),
                      ],
 
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.HSeparator(color="gold")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                     [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0, justification="center"), sg.Stretch()],
-                    [sg.Canvas(size=(200,two)), add_dots(), sg.HSeparator(color="gold"), add_dots(), sg.Canvas(size=(200,two))],
-                       [sg.Canvas(size=(widest_measure,two))],
-                    #[add_dots(), sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch(), add_dots()],
+                    [sg.Canvas(size=(200,2)), add_dots(), sg.HSeparator(color="gold"), add_dots(), sg.Canvas(size=(200,2))],
+                       [sg.Canvas(size=(widest_measure,2))],
                     [sg.VStretch()]
                     ]
 
@@ -1343,11 +1395,10 @@ def make_window():
 
     layout = [[sg.Frame(title="", layout=farkle_main_screen, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-    window = sg.Window(' farkle ••', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=False, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
+    window = sg.Window(' farkle ••', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=True, grab_anywhere=False, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
     window['-TAKE-'].bind("<Return>", "_Enter")
 
     colour_dice(preroll=True)
-    game_started = False
     round_started = False
     opened1 = False
     window['-SEC1-'].update(visible=False)
@@ -1363,15 +1414,24 @@ def make_window():
 
     while True:
 
-        if not window.is_closed():
-            colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True)
+        event, values = window.read(timeout=500)
+        print(f"EVENT: \n\n{event}\n\n")
+        #if event == "__TITLEBAR CLOSE__":
+        #    global window_is_closed
+        #    window_is_closed = True
+        #    if not window.is_closed():
+        #        clear_prints()
+        #    break
 
-        event, values = window.read(timeout=1000)
+        if event == sg.WIN_CLOSED or event == '-EXIT-' or event == "__TITLEBAR CLOSE__":
 
-        if event == sg.WIN_CLOSED or event == '-EXIT-':
             if not window.is_closed():
                 clear_prints()
+            return "exit", None
             break
+
+        if not window.is_closed(quick_check=False):
+            colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True)
 
         used_dice = None
         if players.is_singleplayer and players.current == players.player_2:
@@ -1405,7 +1465,6 @@ def make_window():
             print_points_line(string_print='')
             print_output_text(text=f"{players.current.name} is starting their turn.")
             sleep(.2)
-
             roll_dice(do_refresh=True)
             to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True)
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
@@ -1519,9 +1578,9 @@ def settings_window():
     singleplayer = [
                      [sg.HSeparator(color="gold")],
                      [sg.Text("Currently, the game is single player. What do you want it to be?" if players.is_singleplayer else "Currently, the game is two-player. What do you want it to be?")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [make_settings_button(width=std_btn, height=1, key="choose_single", key_str="Single player"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_two", key_str="Two human players")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Text("Note: Changing to/from single player mode will reset the game.")],
                      [sg.HSeparator(color="gold")]
                     ]
@@ -1530,9 +1589,9 @@ def settings_window():
                      [sg.HSeparator(color="gold")],
                      [sg.Text(f"Currently, the computer is using the playstyle `{players.default_playstyle}`.\nWhat do you want it to be?", justification="center")],
                      #[sg.Text(f"The options are: {list(f"[ {i} ]" for i in players.playstyles)}`", justification="center")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      make_playstyle_buttons(),
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.HSeparator(color="gold")]
                     ]
 
@@ -1540,11 +1599,11 @@ def settings_window():
                      [sg.HSeparator(color="gold")],
                      [sg.Text(f"Player 1 is currently named `{players.player_1.name}`. Player 2 is currently named `{players.player_2.name}`", justification="center")],
                      [sg.Text(f"Enter new names below to change them, or set a new colour for that player.", justification="center")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Input(default_text=players.player_1.name, key="player_1_name", focus=True, enable_events=True), sg.Input(players.player_1.skin, key="player_1_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_1.skin}", target="player_1_col_text", key="player_1_colour", button_color=players.player_1.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 1.\n(Colour will update after saving settings.)")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Input(default_text=players.player_2.name, key="player_2_name", enable_events=True), sg.Input(players.player_2.skin, key="player_2_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_2.skin}", target="player_2_col_text", key="player_2_colour", button_color=players.player_2.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 2.\n(Colour will update after saving settings.)")],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.HSeparator(color="gold")]
                     ]
 
@@ -1552,11 +1611,11 @@ def settings_window():
                      [sg.HSeparator(color="gold")],
                      [sg.Stretch(), sg.Text(f" -- THEMES -- ", justification="center"), sg.Stretch()],
                      [sg.Stretch(), sg.Text(f"Currently, the theme is `{sg.theme().replace("farkle_", "")}`", justification="center"), sg.Stretch()],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_tan", key_str="TAN"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_navy", key_str="NAVY"), sg.Stretch()],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Stretch(), sg.Text("[Theme will update when you leave Settings.]"), sg.Stretch()],
-                     [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.HSeparator(color="gold")]
                     ]
 
@@ -1586,7 +1645,6 @@ def settings_window():
         event, values = settings_window.read(timeout=1000)
 
         if event == "restore":
-            print("EVENT IS RESTORE")
             settings_dict["restore_defaults"] = True
             settings_window.close()
             return settings_dict
@@ -1726,7 +1784,7 @@ def apply_settings(settings_dict):
                 init_classes(players.player_1.name, '', player1_col = "blue", player2_col = "red")
 
         if action == "change_names":
-            print(f"DATA for change names: {data}")
+            #print(f"DATA for change names: {data}")
             for name in data:
                 if data[name]:
                     if "_name" in name:
@@ -1789,7 +1847,6 @@ def main_gui():
         elif use_settings:
             settings_dict = settings_window()
             if settings_dict:
-                print(f"SETTINGS DICT: {settings_dict}")
                 apply_settings(settings_dict)
 
 main_gui()
