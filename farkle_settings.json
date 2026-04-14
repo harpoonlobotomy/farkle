@@ -1,0 +1,18 @@
+{
+  "defaults": {
+    "player1_name": "player_1",
+    "player1_col": "#5AC280",
+    "player2_name": "player_2",
+    "player2_col": "#5A90C2",
+    "playstyle": "harpoon",
+    "is_singleplayer": true,
+    "computer_think_aloud": false,
+    "game_theme": "navy",
+    "output_file": "farkle_output.json"
+  },
+  "user_set": {
+    "game_theme": "farkle_tan",
+    "player1_name": "blarp",
+    "player1_col": "#aa2d97"
+  }
+}

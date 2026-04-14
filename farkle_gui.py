@@ -8,10 +8,53 @@ started April 2026 //  [gui version] v 1.1 // harpoonlobotomy"""
 from time import sleep
 import random
 
-global used_dice
-used_dice = set()
 die_refresh_val = 0.135
 points_to_win = 4000
+
+class settings:
+
+    player1_name:str = None
+    player1_col:str = None
+    player2_name:str = None
+    player2_col:str = None
+    playstyle:str = None
+    is_singleplayer:bool = None
+    computer_think_aloud:bool = None
+    output_file:str = None
+    game_theme:str = None
+
+    def init(self, settings_dict):
+
+        for item in settings.__annotations__: # counted here as long as the type is given, apparently. Can't be the best way to do this but seems to be working so will go with it.
+            setattr(settings, item, settings_dict["user_set"][item] if settings_dict["user_set"].get(item) else settings_dict["defaults"][item])
+        #print(f"SETTINGS VARS: {vars(settings)}")
+        """self.player1_name = settings_dict["user_set"]["player1_name"] if settings_dict["user_set"].get("player1_name") else settings_dict["defaults"]["player1_name"]
+        self.player2_name = settings_dict["user_set"]["player2_name"] if settings_dict["user_set"].get("player2_name") else settings_dict["defaults"]["player2_name"]
+        self.playstyle = settings_dict["user_set"]["playstyle"] if settings_dict["user_set"].get("playstyle") else settings_dict["defaults"]["playstyle"]
+        self.is_singleplayer = settings_dict["user_set"]["is_singleplayer"] if settings_dict["user_set"].get("is_singleplayer") else settings_dict["defaults"]["is_singleplayer"]
+        self.computer_think_aloud = settings_dict["user_set"]["computer_think_aloud"] if settings_dict["user_set"].get("computer_think_aloud") else settings_dict["defaults"]["computer_think_aloud"]
+        self.output_file = settings_dict["user_set"]["output_file"] if settings_dict["user_set"].get("output_file") else settings_dict["defaults"]["output_file"]
+"""
+
+class theme_data():
+
+    def __init__(self, background, text, highlight):
+        self.background = background
+        self.text = text
+        self.highlight = highlight
+
+
+def init_settings():
+
+    def check_for_settings_file():
+        # shorter than it used to be, no longer allows for user input of settings directory. Would like to add that back in but don't know how at present.
+        from make_settings import check_settings_file
+        settings_dict = check_settings_file()
+        return settings_dict
+
+    settings_dict = check_for_settings_file()
+    settings.init(settings, settings_dict)
+
 
 def make_play_area():
 
@@ -303,6 +346,7 @@ colours = {
 
 export_data = False
 
+
 class outputter:
 
     def __init__(self):
@@ -310,6 +354,35 @@ class outputter:
         self.session_ID:str = str(uuid4())[-6:]
         self.turn_data = {}
         self.game_data = {}
+
+    def file_select(self, file_selection):
+
+        if file_selection == "gamedata":
+            file = settings.output_file
+
+        elif file_selection == "settings":
+            import os
+            file = rf"{os.getcwd()}\farkle_settings.json"
+        return file
+
+    def load_json(self, file_selection):
+
+        file = self.file_select(file_selection)
+
+        import json
+        with open(file, "r") as f:
+            file_data = json.load(f)
+
+        return file_data
+
+    def output_to_file(self, data, file_selection):
+
+        file = self.file_select(file_selection)
+
+        import json
+        with open(file, "w") as f:
+            json.dump(data, f, indent=2)
+
 
     def start_game(self):
 
@@ -321,11 +394,7 @@ class outputter:
         if not export_data:
             return
 
-        import json
-        file = r"D:\Git_Repos\farkle\farkle.json"
-
-        with open(file, "r") as f:
-            farkle_file = json.load(f)
+        farkle_file = self.load_json("gamedata")
 
         gamedata = self.game_data.copy()
 
@@ -337,8 +406,7 @@ class outputter:
         if end_game:
             gamedata[self.session_ID][players.total_games]["game_score"] = {players.current.name: players.current.game_score, players.opponent.name: players.opponent.game_score}
 
-        with open(file, "w") as f:
-            json.dump(gamedata, f, indent=2)
+        self.output_to_file(self, gamedata, "gamedata")
 
 
     def collect_turndata(self, player:"playerInst", matches=None, die_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
@@ -369,7 +437,6 @@ class outputter:
             self.turn_data[players.total_turns] = {"player": player.name, "initial roll": initial_roll, "rolls": {}}
             current_data = self.turn_data[players.total_turns]
 
-
         if matches:
             current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": matches, "Roll score": roll_score})
 
@@ -386,6 +453,29 @@ class outputter:
 
         if game_end:
             self.output_gamedata(player, end_game=True)
+
+to_json = outputter()
+
+def restore_defaults():
+
+    settings_dict = to_json.load_json("settings")
+
+    for item in settings_dict["defaults"]:
+        print(f"item in default dict: {settings_dict['defaults'][item]} // item: {item}")
+        setattr(settings, item, settings_dict["defaults"][item])
+
+    settings_dict["user_set"] = {}
+
+    to_json.output_to_file(settings_dict, "settings")
+
+    #print(f"SETTINGS VARS: {vars(settings)}")
+    """self.player1_name = settings_dict["defaults"]["player1_name"]
+    self.player2_name = settings_dict["defaults"]["player2_name"]
+    self.playstyle = settings_dict["defaults"]["playstyle"]
+    self.is_singleplayer = settings_dict["defaults"]["is_singleplayer"]
+    self.computer_think_aloud = settings_dict["defaults"]["computer_think_aloud"]
+    self.output_file = settings_dict["defaults"]["output_file"]"""
+
 
 class playerInst:
 
@@ -425,6 +515,10 @@ class playerClass:
         self.total_turns:int = int()
         self.tally:dict[int, str] = {}
 
+    def scoreline(self):
+        return f"Current player: {self.current.name}\nScores: {self.player_1.name}: {self.player_1.game_score} / {self.player_2.name}: {self.player_2.game_score}"
+
+
     def __repr__(self):
         return f"Players: {self.players} Current player: {self.current.name}"
 
@@ -450,6 +544,7 @@ def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red"
     if players.is_singleplayer:
         players.autoplay = player_2
         player_2.playstyle = players.default_playstyle
+        player_2.name = player_2.playstyle + "Bot"
 
     return dict({"player_1": player_1, "player_2": player_2})
 
@@ -587,7 +682,7 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
             if updated_dice:
                 used_dice = updated_dice
 
-        #.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
+        to_json.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
 
     if not matches and not test_only:
         player.turn_score = 0
@@ -669,7 +764,9 @@ farkle_navy = {'BACKGROUND': navy,
                 'PROGRESS_DEPTH': 0,
                 'dot_colour': "#B08F23",
                 'font': "courier 14 bold",
-                "alt_tally_bg": "#332b26"}
+                "alt_tally_bg": "#332b26",
+                "title_bg": navy,
+                "gold_text": "#ffd768"}
 
 farkle_tan = {'BACKGROUND': ivory,
                 'TEXT': "#25775f",
@@ -683,7 +780,9 @@ farkle_tan = {'BACKGROUND': ivory,
                 'PROGRESS_DEPTH': 0,
                 'dot_colour': "#332b26",
                 'font': "courier 14 bold",
-                "alt_tally_bg": "#CDC9A6"
+                "alt_tally_bg": "#CDC9A6",
+                "title_bg": ivory,
+                "gold_text": "#442D15"
                 }
 
 
@@ -718,12 +817,11 @@ numbers_colour="yellow"
 button_mouseover="#105C26"
 button_held = "#F8DC5E"
 button_used = "#666354"
-button_std = ('black', "#5AC280")
-player_2_die = ('black', "#5A90C2")
+#player_1_die = settings.player1_col#"#5AC280"
+#player_2_die = settings.player2_col#"#5A90C2"
 
 die_bust_col = ('white', "#330303")
 
-icon_str = None
 dice_dict = {}
 
 die_1 = 1
@@ -732,8 +830,6 @@ die_3 = 3
 die_4 = 4
 die_5 = 5
 die_6 = 6
-
-used_dice = dice.dice
 
 point_value = ''
 output_line_str = ''
@@ -758,7 +854,6 @@ preroll_text = {
     "die_5": "L",
     "die_6": "E",
 }
-
 
 tally_text_col = None#"#653635"
 
@@ -819,10 +914,8 @@ def make_window():
                     elif die_inst.used:
                         window[dice_place].update(button_color=button_used)
                     else:
-                        if players.current == players.player_2:
-                            window[dice_place].update(button_color=player_2_die)
-                        else:
-                            window[dice_place].update(button_color=button_std)
+                        window[dice_place].update(button_color=players.current.skin)
+
 
             if do_refresh:
                 window.refresh()
@@ -921,7 +1014,7 @@ def make_window():
     def round_over(winner:playerInst):
         winner.wins += 1
         clear_held_and_used_dice()
-        window["print_player_stats"].update(f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
+        window["print_player_stats"].update(players.scoreline())#f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
 
         def new_game_window():
             new_game_layout = [
@@ -952,14 +1045,14 @@ def make_window():
                 p.turn_count = 0
             players.total_turns = 0
             players.tally = {}
-            window["print_player_stats"].update(f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
+            window["print_player_stats"].update(players.scoreline())#f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
 
             colour_dice(preroll=True, do_refresh=True)
             window["output_line"].update("Starting a new game!")
             window.refresh()
 
         else:
-            window["output_line"].update(f"Thanks for playing! Final scores: {players.player_1.name}: {players.player_1.game_score} points, {players.player_1.wins} games won / {players.player_2.name}: {players.player_2.game_score} points, {players.player_2.wins} games won")
+            window["output_line"].update(f"Thanks for playing! Final scores: {players.player_1.name}: {players.player_1.game_score} points, {players.player_1.wins} games won // {players.player_2.name}: {players.player_2.game_score} points, {players.player_2.wins} games won")
             return "game_over"
 
 
@@ -988,7 +1081,8 @@ def make_window():
         clear_held_and_used_dice()
 
         colour_dice(preroll=True, do_refresh=True)
-        window["print_player_stats"].update(f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
+        window["print_player_stats"].update(players.scoreline())#f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
+        to_json.start_game() # do this here so the first turn is always included regardless of PC or human player starting. Could get messy otherwise.
 
 
     def print_points_line(score='', bust=False, string_print=''):
@@ -997,7 +1091,7 @@ def make_window():
             point_value = string_print
         elif not bust:
             if score:
-                point_value = f"Points from this roll: {score}"
+                point_value = f"Points from this roll: {score} / Current turn score: {players.current.turn_score}"
             else:
                 point_value = ''
         else:
@@ -1018,7 +1112,7 @@ def make_window():
 
     def take_score_and_end_turn(get_turnscore = True):
         clear_prints()
-        score = str(players.current.turn_score)
+        score = str(players.current.turn_score) # score isn't used anywhere here. remove? #TODO
         if get_turnscore:
             score, _, _ = get_score(players.current, set(i for i in dice.dice if i.held), print_result=True, get_score=True)
         take_roll(players.current)
@@ -1036,9 +1130,10 @@ def make_window():
             print_output_text(text='')
             sleep(.2)
             roll_dice(do_refresh=True)
+            to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True) # only initial if first roll
             #colour_buttons()
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
-            sleep(.5)
+            sleep(.3)
             if not used_dice:
                 return "bust"
 
@@ -1053,19 +1148,17 @@ def make_window():
 
             has_potential, used_dice, output_text = get_score(player, unused_dice, print_result=False, get_score=False)
 
-            #has_potential, used_dice = dice.auto_best(player)
-            #pos.print_error(f"HAS POTENTIAL: {has_potential}")# USED DICE: {used_dice}")
-            #has_potential = dice.dice_potential(starting=True)
             if not has_potential: # should not get here, as it should get caught by start_turn
-                #player.game_score = 0#+= player.turn_score
                 return "bust", None
-                #return end_turn(player)
 
             for _, inst in dice_dict.items():
                 if inst in used_dice:
                     inst.held = True
+                    print_output_text(text=output_text)
                     colour_dice(inst, do_refresh=True)
                     sleep(.3)
+                print_points_line(has_potential)
+                window.refresh()
 
 
             score, used_dice, output_text = get_score(player, used_dice)
@@ -1077,10 +1170,7 @@ def make_window():
                     sleep(.3)
 
             print_points_line(score)
-            #print_points_line(players.current.turn_score)
             window.refresh()
-
-            #mark_used(used_dice)
 
             used_dice_count = sum(1 for d in dice.dice if d.used)
 
@@ -1119,11 +1209,10 @@ def make_window():
             else:
                 if (used_dice_count < 4 and (player.game_score + player.turn_score < points_to_win)) or player.turn_score < points_to_win/8:
                     window["output_line"].update("Rolling again.")
-                    #pos.print_output("Roll done, checking for potential...")
                 else:
                     window["output_line"].update(f"{player} ends their turn with {player.turn_score} points.")
+                    sleep(.5)
                     return "end_turn", None
-                    #return take_roll(player)
 
     def update_tally_entries():
 
@@ -1159,18 +1248,18 @@ def make_window():
     def rules_window(): #separate window so it can be left open during play if desired
         rules_panel = [[sg.Canvas(size=(widest_measure,two), pad=two)],
 
-                    [sg.HSeparator(color="gold"), sg.Text(text=" -- RULES-- ", justification="center"), sg.HSeparator(color="gold")],
-                    [sg.HSeparator(color="gold")],
-                    [sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.Text(text=rules, expand_x=True, expand_y=True)],
+                    #[sg.HSeparator(color="gold"), sg.Text(text=" -- RULES-- ", justification="center", text_color=theme_dict[sg.theme()]["gold_text"]), sg.HSeparator(color="gold")],
+                    #[sg.HSeparator(color="gold")],
+                    #[sg.Canvas(size=(widest_measure,two), pad=two)],
+                    [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_dict[sg.theme()]["gold_text"], justification="center")],#, font=(f"courier {int(std_dot_size)} bold"))],
                     [sg.Stretch(), sg.Text(text="[ Note: You can keep the rules open while you play if you like. ]", justification="right")]
                     ]
 
         rules_main = [[sg.Column(rules_panel)]]
 
-        rules_layout = [[sg.Frame(title=" farkle rules ••", key="rules_window", layout=rules_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
+        rules_layout = [[sg.Frame(title="", key="rules_window", layout=rules_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-        rules_window = sg.Window('RULES', rules_layout, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=icon_str)
+        rules_window = sg.Window(' farkle rules ••', rules_layout, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
 
         _, _ = rules_window.read(timeout=1000)
 
@@ -1201,24 +1290,28 @@ def make_window():
 
     tally_board = [get_tally()]#, sg.Table(values = [[1]], key="tally_table_P2", display_row_numbers=True, starting_row_number=1, headings=[f"{players.opponent.name}"], expand_x=True, hide_vertical_scroll=True, def_col_width = 40, auto_size_columns=False)]]
 
-    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc.\nNOTE: Changing to single/two player will reset the game."), add_dots(), make_button(width=std_btn, height=1, key_str="RULES"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
-                       [sg.Canvas(size=(widest_measure,two))],
-                       [sg.HSeparator(color="gold")],
-                       [sg.Stretch(), sg.Text(text=f"Current player: {players.current.name}, scores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}", key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0), sg.Stretch()],
-                       [sg.HSeparator(color="gold")],
+    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc."), add_dots(), make_button(width=std_btn, height=1, key_str="Rules"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
+                    #[sg.Canvas(size=(widest_measure,1))],
+                    #[sg.HSeparator(color="gold")],
+                    #scoreline text == f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}"
+                    [sg.Stretch(), sg.Text(text=players.scoreline(), key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), text_color=theme_dict[sg.theme()]["gold_text"], pad=0, justification="center", size=(60,2)), sg.Stretch()],
+                    [sg.Canvas(size=(widest_measure,2))],
+                    [sg.HSeparator(color="gold")],
+                    [sg.Canvas(size=(widest_measure,2))],
                     [sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center"),
                      sg.Column(key="dice_layout", layout=dice_display, justification="c", vertical_alignment="center"),
                      sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center")]]
 
-    point_output = [[sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.HSeparator(color="gold")],
+    text_width = len("points from this roll: 1111 / current turn score: 1111")
+    point_output = [
+                    [sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch()],
                     #[sg.Canvas(size=(widest_measure,five))],
                     [sg.Canvas(size=(widest_measure,two), pad=two)],
                      #sg.InputText(default_text='', size=(int(std_dot_size)+6, int(std_dot_size)*2), border_width=two, focus=False, enable_events=True, justification="c", font=("courier", std_dot_size, "bold"),
                      #   key='-INPUT-', tooltip="Enter the dice values you wish to hold."),
-                     [sg.VStretch()],
-                    [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), pad=0), sg.Stretch()],
-                    [sg.HSeparator(color="gold")],
+                    [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), size=(text_width, 1), pad=0, justification="center"), sg.Stretch()],
+                    [sg.Canvas(size=(widest_measure,two), pad=two)],
+                    [sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch()]
                     ]
 
     roll_take_and_output_print =      [
@@ -1232,7 +1325,7 @@ def make_window():
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
                      [sg.HSeparator(color="gold")],
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
-                    [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0), sg.Stretch()],
+                    [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0, justification="center"), sg.Stretch()],
                     [sg.Canvas(size=(200,two)), add_dots(), sg.HSeparator(color="gold"), add_dots(), sg.Canvas(size=(200,two))],
                        [sg.Canvas(size=(widest_measure,two))],
                     #[add_dots(), sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch(), add_dots()],
@@ -1248,9 +1341,9 @@ def make_window():
             [sg.Column(layout=settings_rules_and_exit, justification="center")], [sg.Column(layout=point_output, justification="center")], [sg.Column(layout=roll_take_and_output_print, justification="center", expand_x=True)], [sg.Column(layout=tally, justification="center")]
         ]
 
-    layout = [[sg.Frame(title=" farkle ••", layout=farkle_main_screen, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
+    layout = [[sg.Frame(title="", layout=farkle_main_screen, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-    window = sg.Window('FARKLE', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=png_icon)
+    window = sg.Window(' farkle ••', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=False, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
     window['-TAKE-'].bind("<Return>", "_Enter")
 
     colour_dice(preroll=True)
@@ -1296,10 +1389,8 @@ def make_window():
 
                 elif outcome == "bust":
                     print_points_line(bust=True)
-                    print("autoplay should show busted")
                     colour_dice(do_refresh=True, bust=True)
                     window.refresh()
-                    print("autoplay should show busted")
                     sleep(.5)
                     #colour_buttons(do_refresh=True, bust=True)
                     players.current.turn_score = 0
@@ -1316,6 +1407,7 @@ def make_window():
             sleep(.2)
 
             roll_dice(do_refresh=True)
+            to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True)
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
             round_started = True
             print_output_text(text=output_str)
@@ -1349,6 +1441,10 @@ def make_window():
                 print_output_text("You must hold at least one die before rolling.")
             else:
                 preroll_score, new_used_dice, _ = get_score(players.current, held_dice, print_result=False, get_score=False)
+                if preroll_score == 0:
+                    print_output_text("You must hold at least one die viable before rolling.")
+                    continue
+
                 mark_used(new_used_dice)
                 for i in dice.dice:
                     if i.held:
@@ -1373,6 +1469,9 @@ def make_window():
                     players.current.turn_score += preroll_score
 
         if event == "-TAKE-":
+            if not players.current.turn_score and not (dice.dice and any(i.held for i in dice.dice)): # ""any(i.held for i in dice.dice)"" oh so that's a use for any. Good.
+                print_output_text("You can't take nothing if there are valid scoring dice.")
+                continue
             round_started = take_score_and_end_turn()
             if round_started and round_started == "end_game":
                 clear_print_lines_before_close()
@@ -1397,15 +1496,12 @@ def make_window():
 
 def settings_window():
 
-    #return #UNDO ME
-
     def make_settings_button(width:float=std_btn, height:float=std_btn, key:str="", key_str:str="Pause", tooltip_str=''):
         if key:
             key_formatting = key
         else:
             key_upper = key_str.upper()
             key_formatting = str("-" + key_upper + '-')
-        #sg.Button("Hello", , use_ttk_buttons=True)
         return sg.Button(auto_size_button=True, button_text = key_str, key=key_formatting, mouseover_colors=button_mouseover, use_ttk_buttons=True, size=(width,height), font=(f"courier {std_dot_size} bold"), disabled_button_color = "#756C5F", tooltip=tooltip_str if tooltip_str else None)
 
     def make_playstyle_buttons():
@@ -1426,6 +1522,7 @@ def settings_window():
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
                      [make_settings_button(width=std_btn, height=1, key="choose_single", key_str="Single player"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_two", key_str="Two human players")],
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
+                     [sg.Text("Note: Changing to/from single player mode will reset the game.")],
                      [sg.HSeparator(color="gold")]
                     ]
 
@@ -1441,12 +1538,12 @@ def settings_window():
 
     names = [
                      [sg.HSeparator(color="gold")],
-                     [sg.Text(f"Player 1 is currently named `{players.player_1.name}`. Player 2 is current named `{players.player_2.name}`", justification="center")],
+                     [sg.Text(f"Player 1 is currently named `{players.player_1.name}`. Player 2 is currently named `{players.player_2.name}`", justification="center")],
                      [sg.Text(f"Enter new names below to change them, or set a new colour for that player.", justification="center")],
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
-                     [sg.Input(default_text=players.player_1.name, key="player_1_name", focus=True, enable_events=True)],
+                     [sg.Input(default_text=players.player_1.name, key="player_1_name", focus=True, enable_events=True), sg.Input(players.player_1.skin, key="player_1_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_1.skin}", target="player_1_col_text", key="player_1_colour", button_color=players.player_1.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 1.\n(Colour will update after saving settings.)")],
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
-                     [sg.Input(default_text=players.player_2.name, key="player_2_name", enable_events=True)],
+                     [sg.Input(default_text=players.player_2.name, key="player_2_name", enable_events=True), sg.Input(players.player_2.skin, key="player_2_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_2.skin}", target="player_2_col_text", key="player_2_colour", button_color=players.player_2.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 2.\n(Colour will update after saving settings.)")],
                      [sg.Canvas(size=(widest_measure,two), pad=two)],
                      [sg.HSeparator(color="gold")]
                     ]
@@ -1465,20 +1562,22 @@ def settings_window():
 
 
     settings_options = [
-                        [sg.HSeparator(color="gold")],
-                        [make_settings_button(width=std_btn, height=1, key="panel_single_player", key_str="Single player"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
-                         make_settings_button(width=std_btn, height=1, key="panel_mode", key_str="Computer Mode"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
-                         make_settings_button(width=std_btn, height=1, key="panel_names", key_str="Player names"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
-                         make_settings_button(width=std_btn, height=1, key="panel_themes", key_str="Colour themes")],
-                        [sg.Stretch(), collapse(singleplayer, '-SEC1-'), collapse(mode, '-MODE-'), collapse(names, '-NAMES-'), collapse(themes, '-THEMES-'), sg.Stretch()],
-                        [sg.Stretch(), make_settings_button(width=std_btn, height=1, key="leave", key_str="Save changed settings", tooltip_str="Restart game with the new settings."), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="leave_no_save", key_str="Return without saving", tooltip_str="Closing the settings window without saving changes."), sg.Stretch()]
-                        ]
+                    [sg.HSeparator(color="gold")],
+                    [
+                        make_settings_button(width=std_btn, height=1, key="panel_single_player", key_str="Single player"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_mode", key_str="Computer Mode"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_names", key_str="Player names"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_themes", key_str="Colour themes")
+                        ],
+                    [sg.Stretch(), collapse(singleplayer, '-SEC1-'), collapse(mode, '-MODE-'), collapse(names, '-NAMES-'), collapse(themes, '-THEMES-'), sg.Stretch()],
+                    [sg.Stretch(), add_dots(), make_settings_button(width=std_btn, height=1, key="leave", key_str="Save changed settings", tooltip_str="Return to game with the new settings."), add_dots(), make_settings_button(width=std_btn, height=1, key="leave_no_save", key_str="Return without saving", tooltip_str="Closing the settings window without applying changes."), add_dots(), make_settings_button(width=std_btn, height=1, key="restore", key_str="[Restore defaults]", tooltip_str="Restore settings to defaults. Will restart the game."), add_dots(), sg.Stretch()]
+                    ]
 
     settings_main = [[sg.Column(settings_options)]]
 
-    settings_layout = [[sg.Frame(title=" farkle settings ••", key="settings_window", layout=settings_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
+    settings_layout = [[sg.Frame(title=" farkle settings •• ", key="settings_window", layout=settings_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-    settings_window = sg.Window('SETTINGS', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=icon_str)
+    settings_window = sg.Window('SETTINGS', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=png_icon)
 
     settings_dict = {}
 
@@ -1486,8 +1585,19 @@ def settings_window():
 
         event, values = settings_window.read(timeout=1000)
 
+        if event == "restore":
+            print("EVENT IS RESTORE")
+            settings_dict["restore_defaults"] = True
+            settings_window.close()
+            return settings_dict
+
+        if event in players.playstyles:
+            settings_dict["set_playstyle"] = event
+            for style in players.playstyles:
+                settings_window[style].update(disabled=True if event == style else False)
+
         if event.startswith("panel_"):
-            if event == "panel_single_player": # should be a dropdown menu
+            if event == "panel_single_player":
                 if mode_open:
                     settings_window['-MODE-'].update(visible=False)
                     mode_open = False
@@ -1537,18 +1647,19 @@ def settings_window():
             if event == "panel_themes":
                 if singleplayer_open:
                     settings_window['-SEC1-'].update(visible=False)
-                    settings_window = False
+                    singleplayer_open = False
                 if mode_open:
                     settings_window['-MODE-'].update(visible=False)
-                    settings_window = False
+                    mode_open = False
                 if names_open:
                     settings_window['-NAMES-'].update(visible=False)
-                    settings_window = False
+                    names_open = False
 
                 themes_open = not themes_open
-                settings_window["choose_tan"].update(disabled=True if "tan" in sg.theme() else False)
-                settings_window["choose_navy"].update(disabled=True if "navy" in sg.theme() else False)
                 settings_window['-THEMES-'].update(visible=themes_open)
+                if themes_open:
+                    settings_window["choose_tan"].update(disabled=True if "tan" in sg.theme() else False)
+                    settings_window["choose_navy"].update(disabled=True if "navy" in sg.theme() else False)
 
         if values and values.get("player_1_name"):
             settings_dict["change_names"] = values
@@ -1577,13 +1688,7 @@ def settings_window():
             print(f"Currently the PC's playstyle is `{players.default_playstyle}`")
             print("Change the PC player's playstyle here.")
 
-        if event == "names":
-            #    init_classes(player1, player2, player1_col = "blue", player2_col = "red")
-            print("Set the names here.")
-
         if event == "leave":
-            #print("Save settings to the json file and exit the settings menu.")
-
             settings_window.close()
             return settings_dict
 
@@ -1591,49 +1696,101 @@ def settings_window():
             settings_window.close()
             return
 
+def update_json(update_data:dict):
+
+    """updates JSON with provided dict. Only the keys provided will be updated, and only if the value is different to the current value."""
+    json_data = to_json.load_json("settings")
+    for key, value in update_data.items():
+        json_data["user_set"][key] = value
+
+    to_json.output_to_file(json_data, "settings")
+
 
 def apply_settings(settings_dict):
+    """applies settings to relevant game vars/classes, and updates JSON if enabled and necessary."""
+    update_json_dict = {}
+
     for action, data in settings_dict.items():
+
+        if action == "restore_defaults":
+            print("Restoring settings to defaults.")
+            restore_defaults()
+            init_classes(player1 = settings.player1_name, player2 = settings.player2_name, player1_col = settings.player1_col, player2_col = settings.player2_col)
+            dice.init_dice()
+
         if action == "set_singleplayer":
             print(f"action is set_singleplayer: true/false: `{data}`")
-            players.is_singleplayer = data
-            init_classes(players.player_1.name, '', player1_col = "blue", player2_col = "red")
+            if players.is_singleplayer != data:
+                update_json_dict["is_singleplayer"] = data
+                players.is_singleplayer = data
+                init_classes(players.player_1.name, '', player1_col = "blue", player2_col = "red")
+
         if action == "change_names":
             print(f"DATA for change names: {data}")
             for name in data:
                 if data[name]:
-                    print(f"NAME: {name}")
-                    if name == "player_1_name":
-                        players.player_1.name = data[name]
-                    else:
-                        players.player_2.name = data[name]
+                    if "_name" in name:
+                        if name == "player_1_name":
+                            if data[name] != players.player_1.name:
+                                update_json_dict["player1_name"] = data[name]
+                                players.player_1.name = data[name]
+
+                        elif name == "player_2_name":
+                            if data[name] != players.player_2.name:
+                                update_json_dict["player2_name"] = data[name]
+                                players.player_2.name = data[name]
+
+                    if "col_text" in name:
+                        player_num = name.split("_")[1]
+                        colour = data[name]
+                        if "colour: " in colour:
+                            colour = colour.split("colour: ")[1]
+                        if player_num == "1":
+                            if players.player_1.skin != colour:
+                                players.player_1.skin = colour
+                                update_json_dict["player1_col"] = data[name]
+                        elif player_num == "2":
+                            if players.player_2.skin != colour:
+                                players.player_2.skin = colour
+                                update_json_dict["player2_col"] = data[name]
+
         if action == "set_theme":
-            sg.theme(new_theme=data)
+            if data != sg.theme():
+                update_json_dict["game_theme"] = data
+                sg.theme(new_theme=data)
 
+        if action == "set_playstyle":
+            if players.default_playstyle != data:
+                update_json_dict["playstyle"] = data
+                players.default_playstyle = data
+                if players.is_singleplayer:
+                    players.player_2.playstyle = data
+                    players.player_2.name = f"{data}Bot"
 
+    if update_json_dict:
+        update_json(update_json_dict)
 
 
 def main_gui():
 
+    init_settings()
+
     make_play_area() # needed for pos initialisation.
+
     global players
     players = playerClass()
-    init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red", player2_col = "blue")
+
+    init_classes(player1 = settings.player1_name, player2 = settings.player2_name, player1_col = settings.player1_col, player2_col = settings.player2_col)
 
     while True:
-
         close_window, use_settings = make_window()
         if close_window:
             break
         elif use_settings:
             settings_dict = settings_window()
             if settings_dict:
+                print(f"SETTINGS DICT: {settings_dict}")
                 apply_settings(settings_dict)
 
-#main()
 main_gui()
 
-"""
-NOTE:
-Currently if you select all dice and reroll, it just lets you reroll everything. No limit as to having to have at least one valid selection. Need to fix that.
-Related: Lets you hold a die from rerolling even if it was't used. Should reroll all unused dice. No randomly not-rerolling a 6."""
