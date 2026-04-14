@@ -8,7 +8,7 @@
     "output_file": "farkle_output.json",
     "player1_col": "#5AC280",
     "player2_col": "#5A90C2",
-    "game_theme": "navy"
+    "game_theme": "farkle_arcade"
   },
   "user_set": {}
 }

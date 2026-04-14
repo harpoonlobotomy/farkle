@@ -52,3 +52,25 @@ Hm. Currentl;y, comp wins with "2750 points!" if they win, because the score isn
 player should have all held dice 'used' before the reroll does, instead of applying 'used' as part of the same loop. Again, doesn't matter but feels wrong.
 
 fixed minor bug where deselecting the only selected dice would make get_score throw a fit.
+
+14/4/26
+Have worked on all of the above, will need to double check but think they're all done.
+Today working on re-implementing both the outputter to json and the farkle_settings.json, and saving user settings to the JSON.
+* also, need to add a 'restore to defaults' settings option if they want the original settings back.
+
+Things I need to add to settings to make this work (so it always grabs from settings, user settings if found else default settings):
+ - player colours - added to settings as 'playerx_col
+ - keep on top
+
+Removed 'used_dice' as a global var, I don't think it was used anymore.
+
+11.35am
+
+Can now save user settings to JSON to be restored on next run, as well as an option to restore default settings.
+
+About to add a theme class so I can better manage it, currently it doesn't properly update as the vars are instituted before the settings are applied so it doesn't properly change theme etc without a full restart.
+
+Partway through adding the json play output back in.
+
+8.49pm
+basically calling it done for now. Need a break and it's mostly what I wanted it to be.

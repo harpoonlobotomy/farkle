@@ -42,51 +42,71 @@ class settings:
 
 class theme_data():
 
-    def __init__(self, theme_name):
-        self.BACKGROUND:str = theme_name
+    def __init__(self):
+        pass
+
+    eggplant = "#3E2857",
+    navy = "#284157"
+    ivory = "#E0DAC5"
+    theme_dict:dict = {
+        "farkle_navy": {'BACKGROUND': navy,
+                    'TEXT': "#B08F23",#"#25775f",
+                    'INPUT': "#45523F",
+                    'TEXT_INPUT': "#f5db74",
+                    'SCROLL': "#003e9b",
+                    'BUTTON': ('black', "#F8DC5E"),
+                    'PROGRESS': ('#01826B', '#D0D0D0'),
+                    'BORDER': 3,
+                    'SLIDER_DEPTH': 0,
+                    'PROGRESS_DEPTH': 0,
+                    'dot_colour': "#B08F23",
+                    'font': "courier 14 bold",
+                    "alt_tally_bg": "#332b26",
+                    "title_bg": navy,
+                    "gold_text": "#ffd768"},
+
+        "farkle_tan": {'BACKGROUND': ivory,
+                    'TEXT': "#25775f",
+                    'INPUT': "#45523F",
+                    'TEXT_INPUT': "#f5db74",
+                    'SCROLL': "#003e9b",
+                    'BUTTON': ('black', "#F8DC5E"),
+                    'PROGRESS': ('#01826B', '#D0D0D0'),
+                    'BORDER': 3,
+                    'SLIDER_DEPTH': 0,
+                    'PROGRESS_DEPTH': 0,
+                    'dot_colour': "#332b26",
+                    'font': "courier 14 bold",
+                    "alt_tally_bg": "#CDC9A6",
+                    "title_bg": ivory,
+                    "gold_text": "#442D15"
+                    },
+
+        "farkle_arcade": {'BACKGROUND': "#38354a",#31374e",
+                    'TEXT': "#de4507",
+                    'INPUT': "#45523F",
+                    'TEXT_INPUT': "#f5db74",
+                    'SCROLL': "#003e9b",
+                    'BUTTON': ('black', "#ffda57"),##ffd657"),
+                    'PROGRESS': ('#01826B', '#D0D0D0'),
+                    'BORDER': 3,
+                    'SLIDER_DEPTH': 0,
+                    'PROGRESS_DEPTH': 0,
+                    'dot_colour': "#d35700",
+                    'font': "courier 14 bold",
+                    "alt_tally_bg": "#433e5e",
+                    "title_bg": "#382b43",#362b43",
+                    #"title_bg": "#31374e",
+                    "gold_text": "#f0c762",# "#ffd365",
+                    'ACCENT1': '#FF0266','ACCENT2': '#FF5C93','ACCENT3': '#C5003C',
+                    }}
 
     def init_themes(self):
 
-        eggplant = "#3E2857",
-        navy = "#284157"
-        ivory = "#E0DAC5"
 
-        farkle_navy = {'BACKGROUND': navy,
-                        'TEXT': "#B08F23",#"#25775f",
-                        'INPUT': "#45523F",
-                        'TEXT_INPUT': "#f5db74",
-                        'SCROLL': "#003e9b",
-                        'BUTTON': ('black', "#F8DC5E"),
-                        'PROGRESS': ('#01826B', '#D0D0D0'),
-                        'BORDER': 3,
-                        'SLIDER_DEPTH': 0,
-                        'PROGRESS_DEPTH': 0,
-                        'dot_colour': "#B08F23",
-                        'font': "courier 14 bold",
-                        "alt_tally_bg": "#332b26",
-                        "title_bg": navy,
-                        "gold_text": "#ffd768"}
-
-        farkle_tan = {'BACKGROUND': ivory,
-                        'TEXT': "#25775f",
-                        'INPUT': "#45523F",
-                        'TEXT_INPUT': "#f5db74",
-                        'SCROLL': "#003e9b",
-                        'BUTTON': ('black', "#F8DC5E"),
-                        'PROGRESS': ('#01826B', '#D0D0D0'),
-                        'BORDER': 3,
-                        'SLIDER_DEPTH': 0,
-                        'PROGRESS_DEPTH': 0,
-                        'dot_colour': "#332b26",
-                        'font': "courier 14 bold",
-                        "alt_tally_bg": "#CDC9A6",
-                        "title_bg": ivory,
-                        "gold_text": "#442D15"
-                        }
-
-
-        sg.theme_add_new('farkle_tan', farkle_tan)
-        sg.theme_add_new('farkle_navy', farkle_navy)
+        sg.theme_add_new('farkle_tan', self.theme_dict["farkle_tan"])
+        sg.theme_add_new('farkle_navy', self.theme_dict["farkle_navy"])
+        sg.theme_add_new('farkle_arcade', self.theme_dict["farkle_arcade"])
         #sg.theme('farkle_tan')
 
 
@@ -104,56 +124,15 @@ def init_settings():
     theme_name = settings_dict["user_set"]["game_theme"] if settings_dict["user_set"].get("game_theme") else settings_dict["defaults"]["game_theme"]
     if "farkle_" in theme_name:
         theme_name = theme_name.replace("farkle_", "")
-    theme_data(theme_name)
+    theme_data()
     theme_data.init_themes(theme_data)
     sg.theme(f'farkle_{theme_name}')
 
-eggplant = "#3E2857",
-navy = "#284157"
-ivory = "#E0DAC5"
 
-farkle_navy = {'BACKGROUND': navy,
-                'TEXT': "#B08F23",#"#25775f",
-                'INPUT': "#45523F",
-                'TEXT_INPUT': "#f5db74",
-                'SCROLL': "#003e9b",
-                'BUTTON': ('black', "#F8DC5E"),
-                'PROGRESS': ('#01826B', '#D0D0D0'),
-                'BORDER': 3,
-                'SLIDER_DEPTH': 0,
-                'PROGRESS_DEPTH': 0,
-                'dot_colour': "#B08F23",
-                'font': "courier 14 bold",
-                "alt_tally_bg": "#332b26",
-                "title_bg": navy,
-                "gold_text": "#ffd768"}
-
-farkle_tan = {'BACKGROUND': ivory,
-                'TEXT': "#25775f",
-                'INPUT': "#45523F",
-                'TEXT_INPUT': "#f5db74",
-                'SCROLL': "#003e9b",
-                'BUTTON': ('black', "#F8DC5E"),
-                'PROGRESS': ('#01826B', '#D0D0D0'),
-                'BORDER': 3,
-                'SLIDER_DEPTH': 0,
-                'PROGRESS_DEPTH': 0,
-                'dot_colour': "#332b26",
-                'font': "courier 14 bold",
-                "alt_tally_bg": "#CDC9A6",
-                "title_bg": ivory,
-                "gold_text": "#442D15"
-                }
-
-
-sg.theme_add_new('farkle_tan', farkle_tan)
-sg.theme_add_new('farkle_navy', farkle_navy)
 #sg.theme('farkle_tan')
-sg.theme('farkle_navy')
+#sg.theme('farkle_arcade')
 
-theme_dict = {}
-theme_dict["farkle_tan"] = farkle_tan
-theme_dict["farkle_navy"] = farkle_navy
+gold = "#ffff7f" # "gold"
 std_dot_size=10
 widest_measure = 340
 half_measure = (widest_measure/2)-5
@@ -214,7 +193,8 @@ preroll_text = {
 
 tally_text_col = None#"#653635"
 
-png_icon = "farkle_icon.png"
+png_icon = "farkle_icon_48.png"
+#png_icon = "farkle_gui.ico"
 
 
 def make_play_area():
@@ -581,7 +561,7 @@ class outputter:
 
         """
         write_turn_data = False#True
-        force_no_writing = False
+        force_no_writing = True
         if force_no_writing:
             return
 
@@ -924,7 +904,7 @@ def collapse(layout, key, visible=False):
     return sg.pin(sg.Column(layout, key=key, visible=visible, element_justification="center"))
 
 def add_dots(dot_size=std_dot_size):
-    dot_colour = theme_dict[sg.theme()]["dot_colour"]
+    dot_colour = theme_data.theme_dict[sg.theme()]["dot_colour"]
     dot_instance = sg.Text('•', font=(f"courier {dot_size} bold"), text_color=dot_colour, auto_size_text=True, pad=0, justification="centre")
     return dot_instance
 
@@ -937,15 +917,24 @@ def make_horz_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
 
 def make_window():
 
-    preroll_cols = {
-        "die_1": ("black", "#B44734"),
-        "die_2": ("black", "#D6B72B"),
-        "die_3": ("black", "#38B434"),
-        "die_4": ("black", "#34A5B4"),
-        "die_5": ("black", "#3476B4"),
-        "die_6": ("black", "#7A34B4")
-    }
-
+    if settings.game_theme == "arcade":
+        preroll_cols = { # for farkle_arcade
+            "die_1": ("black", "#db270d"),
+            "die_2": ("black", "#ffb302"),
+            "die_3": ("black", "#71b335"),
+            "die_4": ("black", "#4e8f9a"),
+            "die_5": ("black", "#4e5b9a"),
+            "die_6": ("black", "#ae3aad")
+        }
+    else:
+        preroll_cols = {
+            "die_1": ("black", "#B44734"),
+            "die_2": ("black", "#D6B72B"),
+            "die_3": ("black", "#38B434"),
+            "die_4": ("black", "#34A5B4"),
+            "die_5": ("black", "#3476B4"),
+            "die_6": ("black", "#7A34B4")
+        }
     def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False):
 
         def _do_colour(die_inst, do_refresh=False, bust=False):
@@ -1303,14 +1292,15 @@ def make_window():
         tally_entries, tally_entries_second = update_tally_entries()
         col_width = (len(players.player_1.name) if players.player_1.name and len(players.player_1.name) > len(players.player_2.name) else len(players.player_2.name)) + len("Turn x:   = xxxx points")
 
-        tally_alt:str = theme_dict[sg.theme()]["alt_tally_bg"]
-        tally_bg:str = theme_dict[sg.theme()]["BACKGROUND"]
+        tally_alt:str = theme_data().theme_dict[sg.theme()]["alt_tally_bg"]
+        tally_bg:str = theme_data().theme_dict[sg.theme()]["BACKGROUND"]
 
         return [sg.Stretch(), sg.Table(values = [tally_entries], key="tally_table_P1", display_row_numbers=False, headings=[''], expand_y=True, hide_vertical_scroll=True, def_col_width = col_width, auto_size_columns=False, justification="left", background_color=tally_bg, alternating_row_color=tally_alt, text_color=tally_text_col, row_height=22), sg.Table(values = [tally_entries_second], key="tally_table_P2", display_row_numbers=False, headings=[''], expand_y=True, hide_vertical_scroll=True, def_col_width = col_width, auto_size_columns=False, visible=tally_alt if tally_entries_second else False, justification="left", background_color=tally_bg, alternating_row_color=tally_alt, text_color=tally_text_col), sg.Stretch()]
 
+
     def rules_window(): #separate window so it can be left open during play if desired
         rules_panel = [[sg.Canvas(size=(widest_measure,2), pad=2)],
-                    [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_dict[sg.theme()]["gold_text"], justification="center")],
+                    [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_data().theme_dict[sg.theme()]["gold_text"], justification="center")],
                     [sg.Stretch(), sg.Text(text="[ Note: You can keep the rules open while you play if you like. ]", justification="right")]
                     ]
 
@@ -1318,9 +1308,11 @@ def make_window():
 
         rules_layout = [[sg.Frame(title="", key="rules_window", layout=rules_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-        rules_window = sg.Window(' farkle rules ••', rules_layout, enable_close_attempted_event=True, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
+        #rules_window = sg.Window(' farkle rules ••', rules_layout, enable_close_attempted_event=True, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
+        rules_window = sg.Window(' rules ••', rules_layout, keep_on_top=True, finalize=True, margins=(10,10), grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
 
         _, _ = rules_window.read(timeout=1000)
+
 
     def clear_print_lines_before_close():
         sleep(.8)
@@ -1349,10 +1341,10 @@ def make_window():
 
     tally_board = [get_tally()]
 
-    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc."), add_dots(), make_button(width=std_btn, height=1, key_str="Rules"), add_dots(), sg.HSeparator(color="gold"), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
-                    [sg.Stretch(), sg.Text(text=players.scoreline(), key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), text_color=theme_dict[sg.theme()]["gold_text"], pad=0, justification="center", size=(60,2)), sg.Stretch()],
+    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc."), add_dots(), make_button(width=std_btn, height=1, key_str="Rules"), add_dots(), sg.HSeparator(color=gold), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
+                    [sg.Stretch(), sg.Text(text=players.scoreline(), key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), text_color=theme_data().theme_dict[sg.theme()]["gold_text"], pad=0, justification="center", size=(60,2)), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2))],
-                    [sg.HSeparator(color="gold")],
+                    [sg.HSeparator(color=gold)],
                     [sg.Canvas(size=(widest_measure,2))],
                     [sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center"),
                      sg.Column(key="dice_layout", layout=dice_display, justification="c", vertical_alignment="center"),
@@ -1360,11 +1352,11 @@ def make_window():
 
     text_width = len("points from this roll: 1111 / current turn score: 1111")
     point_output = [
-                    [sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch()],
+                    [sg.Stretch(), sg.HSeparator(color=gold), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                     [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), size=(text_width, 1), pad=0, justification="center"), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2), pad=2)],
-                    [sg.Stretch(), sg.HSeparator(color="gold"), sg.Stretch()]
+                    [sg.Stretch(), sg.HSeparator(color=gold), sg.Stretch()]
                     ]
 
     roll_take_and_output_print =      [
@@ -1376,10 +1368,11 @@ def make_window():
                      ],
 
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color="gold")],
+                     [sg.HSeparator(color=gold)],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                     [sg.Stretch(), sg.Text(output_line_str, key="output_line", font=(f"courier {int(std_dot_size) + 2} bold"), pad=0, justification="center"), sg.Stretch()],
-                    [sg.Canvas(size=(200,2)), add_dots(), sg.HSeparator(color="gold"), add_dots(), sg.Canvas(size=(200,2))],
+                    [sg.Canvas(size=(200,1)), add_dots(), sg.HSeparator(color=gold), add_dots(), sg.Canvas(size=(200,1))],
+                    [sg.Stretch(), sg.Text(text="A game by HarpoonLobotomy, 2026.", font="courier 10 bold", text_color=theme_data().theme_dict[sg.theme()]["gold_text"]), sg.Stretch()],
                        [sg.Canvas(size=(widest_measure,2))],
                     [sg.VStretch()]
                     ]
@@ -1395,7 +1388,7 @@ def make_window():
 
     layout = [[sg.Frame(title="", layout=farkle_main_screen, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-    window = sg.Window(' farkle ••', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=True, grab_anywhere=False, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
+    window = sg.Window(' farkle ••', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=True, grab_anywhere=False, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
     window['-TAKE-'].bind("<Return>", "_Enter")
 
     colour_dice(preroll=True)
@@ -1415,13 +1408,6 @@ def make_window():
     while True:
 
         event, values = window.read(timeout=500)
-        print(f"EVENT: \n\n{event}\n\n")
-        #if event == "__TITLEBAR CLOSE__":
-        #    global window_is_closed
-        #    window_is_closed = True
-        #    if not window.is_closed():
-        #        clear_prints()
-        #    break
 
         if event == sg.WIN_CLOSED or event == '-EXIT-' or event == "__TITLEBAR CLOSE__":
 
@@ -1576,27 +1562,27 @@ def settings_window():
     singleplayer_open = mode_open = names_open = themes_open = False
 
     singleplayer = [
-                     [sg.HSeparator(color="gold")],
+                     [sg.HSeparator(color=gold)],
                      [sg.Text("Currently, the game is single player. What do you want it to be?" if players.is_singleplayer else "Currently, the game is two-player. What do you want it to be?")],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [make_settings_button(width=std_btn, height=1, key="choose_single", key_str="Single player"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_two", key_str="Two human players")],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Text("Note: Changing to/from single player mode will reset the game.")],
-                     [sg.HSeparator(color="gold")]
+                     [sg.HSeparator(color=gold)]
                     ]
 
     mode = [
-                     [sg.HSeparator(color="gold")],
+                     [sg.HSeparator(color=gold)],
                      [sg.Text(f"Currently, the computer is using the playstyle `{players.default_playstyle}`.\nWhat do you want it to be?", justification="center")],
                      #[sg.Text(f"The options are: {list(f"[ {i} ]" for i in players.playstyles)}`", justification="center")],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                      make_playstyle_buttons(),
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color="gold")]
+                     [sg.HSeparator(color=gold)]
                     ]
 
     names = [
-                     [sg.HSeparator(color="gold")],
+                     [sg.HSeparator(color=gold)],
                      [sg.Text(f"Player 1 is currently named `{players.player_1.name}`. Player 2 is currently named `{players.player_2.name}`", justification="center")],
                      [sg.Text(f"Enter new names below to change them, or set a new colour for that player.", justification="center")],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
@@ -1604,28 +1590,28 @@ def settings_window():
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Input(default_text=players.player_2.name, key="player_2_name", enable_events=True), sg.Input(players.player_2.skin, key="player_2_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_2.skin}", target="player_2_col_text", key="player_2_colour", button_color=players.player_2.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 2.\n(Colour will update after saving settings.)")],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color="gold")]
+                     [sg.HSeparator(color=gold)]
                     ]
 
     themes = [
-                     [sg.HSeparator(color="gold")],
+                     [sg.HSeparator(color=gold)],
                      [sg.Stretch(), sg.Text(f" -- THEMES -- ", justification="center"), sg.Stretch()],
                      [sg.Stretch(), sg.Text(f"Currently, the theme is `{sg.theme().replace("farkle_", "")}`", justification="center"), sg.Stretch()],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_tan", key_str="TAN"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_navy", key_str="NAVY"), sg.Stretch()],
+                     [sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_tan", key_str="TAN"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_navy", key_str="NAVY"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_arcade", key_str="ARCADE"), sg.Stretch()],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.Stretch(), sg.Text("[Theme will update when you leave Settings.]"), sg.Stretch()],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color="gold")]
+                     [sg.HSeparator(color=gold)]
                     ]
 
 
     settings_options = [
-                    [sg.HSeparator(color="gold")],
+                    [sg.HSeparator(color=gold)],
                     [
-                        make_settings_button(width=std_btn, height=1, key="panel_single_player", key_str="Single player"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
-                        make_settings_button(width=std_btn, height=1, key="panel_mode", key_str="Computer Mode"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
-                        make_settings_button(width=std_btn, height=1, key="panel_names", key_str="Player names"), add_dots(), sg.HSeparator(color="gold"), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_single_player", key_str="Single player"), add_dots(), sg.HSeparator(color=gold), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_mode", key_str="Computer Mode"), add_dots(), sg.HSeparator(color=gold), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_names", key_str="Player names"), add_dots(), sg.HSeparator(color=gold), add_dots(),
                         make_settings_button(width=std_btn, height=1, key="panel_themes", key_str="Colour themes")
                         ],
                     [sg.Stretch(), collapse(singleplayer, '-SEC1-'), collapse(mode, '-MODE-'), collapse(names, '-NAMES-'), collapse(themes, '-THEMES-'), sg.Stretch()],
@@ -1636,8 +1622,8 @@ def settings_window():
 
     settings_layout = [[sg.Frame(title=" farkle settings •• ", key="settings_window", layout=settings_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-    settings_window = sg.Window('SETTINGS', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", icon=png_icon)
-
+    #settings_window = sg.Window('SETTINGS', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=True, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", titlebar_icon=png_icon)
+    settings_window = sg.Window(' settings ••', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=False, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
     settings_dict = {}
 
     while True:
@@ -1718,6 +1704,7 @@ def settings_window():
                 if themes_open:
                     settings_window["choose_tan"].update(disabled=True if "tan" in sg.theme() else False)
                     settings_window["choose_navy"].update(disabled=True if "navy" in sg.theme() else False)
+                    settings_window["choose_arcade"].update(disabled=True if "arcade" in sg.theme() else False)
 
         if values and values.get("player_1_name"):
             settings_dict["change_names"] = values
@@ -1736,11 +1723,21 @@ def settings_window():
             settings_dict["set_theme"] = "farkle_tan"
             settings_window["choose_tan"].update(disabled=True)
             settings_window["choose_navy"].update(disabled=False)
+            settings_window["choose_arcade"].update(disabled=False)
+
 
         if event == "choose_navy":
             settings_dict["set_theme"] = "farkle_navy"
             settings_window["choose_tan"].update(disabled=False)
             settings_window["choose_navy"].update(disabled=True)
+            settings_window["choose_arcade"].update(disabled=False)
+
+
+        if event == "choose_arcade":
+            settings_dict["set_theme"] = "farkle_arcade"
+            settings_window["choose_tan"].update(disabled=False)
+            settings_window["choose_navy"].update(disabled=False)
+            settings_window["choose_arcade"].update(disabled=True)
 
         if event == "mode":
             print(f"Currently the PC's playstyle is `{players.default_playstyle}`")
