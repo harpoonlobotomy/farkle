@@ -74,3 +74,14 @@ Partway through adding the json play output back in.
 
 8.49pm
 basically calling it done for now. Need a break and it's mostly what I wanted it to be.
+
+1.01pm 15/4/26
+two things:
+1: error on exit which I hadn't found before but happened when mum played it.
+    - 'ln 1643, 'NoneType obj has no attr 'startswith' in settings_window
+2: make explicit what 'standard' and 'harpoon' modes do/mean.
+
+The error on line 1643 happens if you click the 'x' to close the settings window. I guess I'd never tested it.
+Settings really shouldn't have the 'x' anyway, you have to either close it by saving or not-saving. closing by the x makes it unclear what you wanted.
+
+Also, this wasn't reported but I want to make the 'settings' window a stable size whether a subsection is open or not, so it doesn't flicker and expand like it does now. It's just really unpleasant looking when it redraws itself like that.

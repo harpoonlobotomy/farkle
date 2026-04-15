@@ -12,6 +12,13 @@ import FreeSimpleGUI as sg
 die_refresh_val = 0.135
 points_to_win = 4000
 
+canvas_col = None#"white"
+region_1_col = None#"red"
+region_2_col = None#"magenta"
+region_3_col = None#"blue"
+v_stretch_col = None#"green"
+h_stretch_col = None#"yellow"
+
 
 window_is_closed = False
 
@@ -134,7 +141,7 @@ def init_settings():
 
 gold = "#ffff7f" # "gold"
 std_dot_size=10
-widest_measure = 340
+widest_measure = 340#560#340
 half_measure = (widest_measure/2)-5
 std_btn = 10
 num_pad_w = 20
@@ -901,7 +908,20 @@ def collapse(layout, key, visible=False):
     :return: A pinned column that can be placed directly into your layout
     :rtype: sg.pin
     """
-    return sg.pin(sg.Column(layout, key=key, visible=visible, element_justification="center"))
+    """key_inner = key + "_inner"
+    if visible:
+        collapsable = [
+        [sg.VStretch()],
+        [sg.Column(layout, key=key_inner, visible=visible, element_justification="center", vertical_alignment="center")],
+        [sg.VStretch()]
+        ]
+    else:
+        collapsable =[
+            [sg.Column(layout, key=key, visible=visible, element_justification="center", vertical_alignment="center")]]
+    return sg.pin(sg.Column(layout=collapsable), vertical_alignment="center")
+    """
+
+    return sg.pin(sg.Column(layout, key=key, visible=visible, element_justification="center", vertical_alignment="center", expand_y=True))
 
 def add_dots(dot_size=std_dot_size):
     dot_colour = theme_data.theme_dict[sg.theme()]["dot_colour"]
@@ -935,6 +955,7 @@ def make_window():
             "die_5": ("black", "#3476B4"),
             "die_6": ("black", "#7A34B4")
         }
+
     def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False):
 
         def _do_colour(die_inst, do_refresh=False, bust=False):
@@ -1325,6 +1346,10 @@ def make_window():
         window.refresh()
         sleep(.5)
 
+    def check_for_close_event(event):
+        if event == sg.WIN_CLOSED or event == '-EXIT-' or event == "__TITLEBAR CLOSE__":
+            return "exit"
+
 
     dice_display = [[make_die("die_1"),
                     sg.Column(layout=mid_gap()),
@@ -1414,7 +1439,6 @@ def make_window():
             if not window.is_closed():
                 clear_prints()
             return "exit", None
-            break
 
         if not window.is_closed(quick_check=False):
             colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True)
@@ -1422,11 +1446,16 @@ def make_window():
         used_dice = None
         if players.is_singleplayer and players.current == players.player_2:
             round_started = True
+            autoplay_loop_event, values = window.read(timeout=100) # exists so it checks immediately after the autoplay fn runs instead of having to wait for it to do the scoring etc first. Not perfect but improved.
             outcome, used_dice = gui_autoplay(players.current, used_dice) # game_won end_turn bust
+            if check_for_close_event(autoplay_loop_event):
+                return "exit", None
             if outcome:
                 #print(f"OUTCOME of turn {players.total_turns}: {outcome}")
                 if outcome == "end_turn":
                     round_started = take_score_and_end_turn(get_turnscore=False)
+                    if check_for_close_event(autoplay_loop_event):
+                        return "exit", None
                     if round_started and round_started == "end_game":
                         clear_print_lines_before_close()
                         window.close()
@@ -1435,11 +1464,15 @@ def make_window():
 
                 elif outcome == "bust":
                     print_points_line(bust=True)
+                    if check_for_close_event(autoplay_loop_event):
+                        return "exit", None
                     colour_dice(do_refresh=True, bust=True)
                     window.refresh()
                     sleep(.5)
                     #colour_buttons(do_refresh=True, bust=True)
                     players.current.turn_score = 0
+                    if check_for_close_event(autoplay_loop_event): # added a number of these so it has different opportunities to notice and exit to limit the user wait after clicking close.
+                        return "exit", None
                     reset_for_new_turn()
                     round_started = False
                 elif outcome == "game_won":
@@ -1447,10 +1480,13 @@ def make_window():
 
         if not round_started:
 
+            autoplay_loop_event, values = window.read(timeout=100)
             clear_held_and_used_dice()
             print_points_line(string_print='')
             print_output_text(text=f"{players.current.name} is starting their turn.")
             sleep(.2)
+            if check_for_close_event(autoplay_loop_event):
+                return "exit", None
             roll_dice(do_refresh=True)
             to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True)
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
@@ -1459,6 +1495,8 @@ def make_window():
             if not used_dice:
                 print_points_line(bust=True)
                 colour_dice(do_refresh=True, bust=True)
+                if check_for_close_event(autoplay_loop_event):
+                    return "exit"
                 sleep(.8)
                 reset_for_new_turn()
                 round_started = False
@@ -1494,6 +1532,8 @@ def make_window():
                 for i in dice.dice:
                     if i.held:
                         i.held=False
+                if check_for_close_event(event):
+                    return "exit"
                 used_dice = set(i for i in dice.dice if i.used)
                 if used_dice and len(used_dice) == 6:
                     print_output_text(f"{players.current.name} used all their dice; rerolling all.")
@@ -1504,6 +1544,8 @@ def make_window():
                     roll_dice(used_dice, do_refresh=True)
                 score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
                 print_output_text(text=output_str)
+                if check_for_close_event(event):
+                    return "exit"
                 if not used_dice:
                     print_points_line(bust=True)
                     colour_dice(do_refresh=True, bust=True)
@@ -1551,205 +1593,285 @@ def settings_window():
 
     def make_playstyle_buttons():
         playstyle_buttons = []
-        playstyle_buttons.append(sg.Stretch())
         for style in players.playstyles:
-            playstyle_buttons.append(sg.Stretch())
+            playstyle_buttons.append(sg.Canvas(size=(10,2), pad=2, background_color=canvas_col))
             playstyle_buttons.append(make_settings_button(width=std_btn, height=1, key=style, key_str=f"[{style}]"))
-        playstyle_buttons.append(sg.Stretch())
-        playstyle_buttons.append(sg.Stretch())
+        playstyle_buttons.append(sg.Canvas(size=(10,2), pad=2, background_color=canvas_col))
         return playstyle_buttons
 
+    def settings_collapse(layout, key, visible=False):
+        """
+        Helper function that creates a Column that can be later made hidden, thus appearing "collapsed"
+        :param layout: The layout for the section
+        :param key: Key used to make this seciton visible / invisible
+        :return: A pinned column that can be placed directly into your layout
+        :rtype: sg.pin
+        """
+        if visible:
+            collapsable = [
+            #[sg.VStretch()],
+            [sg.Column(layout, key=key + "_inner", element_justification="center", background_color=region_3_col, pad=0)],
+            #[sg.VStretch()]
+            ]
+        else:
+            collapsable =[
+                [sg.Column(layout, key=key + "_inner", element_justification="center", background_color=region_3_col, pad=0)]]
+        return sg.pin(sg.Column(layout=collapsable, key=key, visible=visible, justification="center", background_color=region_2_col, pad=0))
+
+        return sg.pin(sg.Column(layout, key=key, visible=visible, element_justification="center", vertical_alignment="center", expand_y=True))
+
     singleplayer_open = mode_open = names_open = themes_open = False
+    blank_open = True
 
     singleplayer = [
+                     [sg.Canvas(size=(widest_measure,22), pad=2, background_color=canvas_col)],
+                    [sg.VStretch()],
                      [sg.HSeparator(color=gold)],
-                     [sg.Text("Currently, the game is single player. What do you want it to be?" if players.is_singleplayer else "Currently, the game is two-player. What do you want it to be?")],
+                     [sg.Text("Currently, the game is single player. What do you want it to be?" if players.is_singleplayer else "Currently, the game is two-player. What do you want it to be?", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [make_settings_button(width=std_btn, height=1, key="choose_single", key_str="Single player"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_two", key_str="Two human players")],
+                     [make_settings_button(width=std_btn, height=1, key="choose_single", key_str="Single player"), sg.Canvas(size=(10,2), pad=2, background_color=canvas_col), make_settings_button(width=std_btn, height=1, key="choose_two", key_str="Two human players")],
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.Text("Note: Changing to/from single player mode will reset the game.")],
-                     [sg.HSeparator(color=gold)]
+                     [sg.Text("Note: Changing to/from single player mode will reset the game.", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
+                     [sg.HSeparator(color=gold)],
+                     [sg.VStretch()],
+                     [sg.Canvas(size=(widest_measure,10), pad=2, background_color=canvas_col)]
                     ]
 
     mode = [
+                    [sg.VStretch()],
                      [sg.HSeparator(color=gold)],
-                     [sg.Text(f"Currently, the computer is using the playstyle `{players.default_playstyle}`.\nWhat do you want it to be?", justification="center")],
+                     [sg.Canvas(size=(widest_measure-30,10), pad=0, background_color=canvas_col)],
+                     [sg.Text(f"Currently, the computer is using the playstyle `{players.default_playstyle}`.\nWhat do you want it to be?", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
                      #[sg.Text(f"The options are: {list(f"[ {i} ]" for i in players.playstyles)}`", justification="center")],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
+                     [sg.Canvas(size=(widest_measure-30,6), pad=0, background_color=canvas_col)],
                      make_playstyle_buttons(),
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color=gold)]
+                     [sg.Canvas(size=(widest_measure-30,6), pad=0, background_color=canvas_col)],
+                     [sg.HSeparator(color=gold)],
+                     [sg.Canvas(size=(widest_measure-30,6), pad=0, background_color=canvas_col)],
+                     [sg.Text(text="'Standard' is the basic game mode:\n  the computer will simply take the best dice it sees each roll.\n\n'Harpoon' is an emulation of the author, which uses strategy across multiple rolls each turn.", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
+                     [sg.VStretch()]
                     ]
 
     names = [
+                    [sg.VStretch()],
+                     [sg.Canvas(size=(widest_measure,6), pad=2, background_color=canvas_col)],
                      [sg.HSeparator(color=gold)],
-                     [sg.Text(f"Player 1 is currently named `{players.player_1.name}`. Player 2 is currently named `{players.player_2.name}`", justification="center")],
-                     [sg.Text(f"Enter new names below to change them, or set a new colour for that player.", justification="center")],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
+                     [sg.Text(f"Player 1 is currently named `{players.player_1.name}`.\nPlayer 2 is currently named `{players.player_2.name}`", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
+                     [sg.Text(f"Enter new names below to change them, or set a new colour for that player.", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
+                     [sg.Canvas(size=(widest_measure,2), pad=2, background_color=canvas_col)],
                      [sg.Input(default_text=players.player_1.name, key="player_1_name", focus=True, enable_events=True), sg.Input(players.player_1.skin, key="player_1_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_1.skin}", target="player_1_col_text", key="player_1_colour", button_color=players.player_1.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 1.\n(Colour will update after saving settings.)")],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
+                     [sg.Canvas(size=(widest_measure,2), pad=2, background_color=canvas_col)],
                      [sg.Input(default_text=players.player_2.name, key="player_2_name", enable_events=True), sg.Input(players.player_2.skin, key="player_2_col_text", enable_events=True, visible=False), sg.ColorChooserButton(f"{players.player_2.skin}", target="player_2_col_text", key="player_2_colour", button_color=players.player_2.skin, border_width=1, size=(8,1), font=(f"courier {std_dot_size} bold"), tooltip="Choose a colour for Player 2.\n(Colour will update after saving settings.)")],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color=gold)]
+                     [sg.Canvas(size=(widest_measure,2), pad=2, background_color=canvas_col)],
+                     [sg.HSeparator(color=gold)],
+                     [sg.VStretch()]
                     ]
 
     themes = [
+                    [sg.VStretch()],
+                    [sg.Canvas(size=(widest_measure,25), pad=2, background_color=canvas_col)],
                      [sg.HSeparator(color=gold)],
-                     [sg.Stretch(), sg.Text(f" -- THEMES -- ", justification="center"), sg.Stretch()],
-                     [sg.Stretch(), sg.Text(f"Currently, the theme is `{sg.theme().replace("farkle_", "")}`", justification="center"), sg.Stretch()],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
+                     [sg.Stretch(), sg.Text(f"Currently, the theme is `{sg.theme().replace("farkle_", "")}`", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"]), sg.Stretch()],
+                     [sg.Canvas(size=(widest_measure,2), pad=2, background_color=canvas_col)],
                      [sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_tan", key_str="TAN"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_navy", key_str="NAVY"), sg.Stretch(), make_settings_button(width=std_btn, height=1, key="choose_arcade", key_str="ARCADE"), sg.Stretch()],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.Stretch(), sg.Text("[Theme will update when you leave Settings.]"), sg.Stretch()],
-                     [sg.Canvas(size=(widest_measure,2), pad=2)],
-                     [sg.HSeparator(color=gold)]
+                     [sg.Canvas(size=(widest_measure,2), pad=2, background_color=canvas_col)],
+                     [sg.Stretch(), sg.Text("[Click 'Save changes' to apply a new theme.]", text_color=theme_data().theme_dict[sg.theme()]["gold_text"]), sg.Stretch()],
+                     [sg.Canvas(size=(widest_measure,2), pad=2, background_color=canvas_col)],
+                     [sg.HSeparator(color=gold)],
+                     [sg.VStretch()]
                     ]
 
+    blank_settings = [
+                    [sg.Canvas(size=(20, 50), background_color=canvas_col)],
+                    [sg.Text(text="[ Change settings in the sections above, and click 'Save changes' to save and update. ]\n[ Click 'Return without saving' to keep existing settings. ]\n[ Click 'restore settings' to return to the original default settings in all categories. ]\n\n(All three buttons below will return you to the game.)", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])]
+    ]
+    theme_sections = [
+                    [sg.Canvas(size=(554, 0), background_color=canvas_col)],
+                    #[sg.VStretch(background_color="green")],
+                    [settings_collapse(blank_settings, "blank"),settings_collapse(singleplayer, '-SEC1-'), settings_collapse(mode, '-MODE-'), settings_collapse(names, '-NAMES-'), settings_collapse(themes, '-THEMES-')],
+                    [sg.Canvas(size=(554, 1), background_color=canvas_col, pad=0)]
+                    #[sg.VStretch(background_color="green")],
+                    #[sg.Stretch(), sg.Canvas(size=(550,2), pad=2), sg.Stretch()],
+## Cannot get it to be properly centred no matter what I do. Getting insanely frustrating tbh. Just going to hardcode the placements I think.
+    ]
 
     settings_options = [
+                    #[sg.VStretch()],
                     [sg.HSeparator(color=gold)],
                     [
                         make_settings_button(width=std_btn, height=1, key="panel_single_player", key_str="Single player"), add_dots(), sg.HSeparator(color=gold), add_dots(),
-                        make_settings_button(width=std_btn, height=1, key="panel_mode", key_str="Computer Mode"), add_dots(), sg.HSeparator(color=gold), add_dots(),
+                        make_settings_button(width=std_btn, height=1, key="panel_mode", key_str="Computer mode"), add_dots(), sg.HSeparator(color=gold), add_dots(),
                         make_settings_button(width=std_btn, height=1, key="panel_names", key_str="Player names"), add_dots(), sg.HSeparator(color=gold), add_dots(),
                         make_settings_button(width=std_btn, height=1, key="panel_themes", key_str="Colour themes")
                         ],
-                    [sg.Stretch(), collapse(singleplayer, '-SEC1-'), collapse(mode, '-MODE-'), collapse(names, '-NAMES-'), collapse(themes, '-THEMES-'), sg.Stretch()],
-                    [sg.Stretch(), add_dots(), make_settings_button(width=std_btn, height=1, key="leave", key_str="Save changed settings", tooltip_str="Return to game with the new settings."), add_dots(), make_settings_button(width=std_btn, height=1, key="leave_no_save", key_str="Return without saving", tooltip_str="Closing the settings window without applying changes."), add_dots(), make_settings_button(width=std_btn, height=1, key="restore", key_str="[Restore defaults]", tooltip_str="Restore settings to defaults. Will restart the game."), add_dots(), sg.Stretch()]
+                    #[sg.VStretch()],
+                    [sg.HSeparator(color=gold)],
+                    [sg.Column(layout = theme_sections, size=(570, 245), justification="center", element_justification="center", background_color=region_1_col, pad=((4,2),(2,2)))],
+                    [sg.HSeparator(color=gold)],
+                    #[sg.VStretch()],
+                    #[sg.Stretch(), collapse(singleplayer, '-SEC1-'), collapse(mode, '-MODE-'), collapse(names, '-NAMES-'), collapse(themes, '-THEMES-'), sg.Stretch()],
+                    [sg.Stretch(), add_dots(), make_settings_button(width=std_btn, height=1, key="leave", key_str="Save changes", tooltip_str="Return to game with the new settings."), add_dots(), make_settings_button(width=std_btn, height=1, key="leave_no_save", key_str="Return without saving", tooltip_str="Closing the settings window without applying changes."), add_dots(), make_settings_button(width=std_btn, height=1, key="restore", key_str="[Restore defaults]", tooltip_str="Restore settings to defaults. Will restart the game."), add_dots(), sg.Stretch()]
                     ]
 
-    settings_main = [[sg.Column(settings_options)]]
+    settings_main = [
+                     [sg.Column(settings_options, justification="center", element_justification="center", pad=5, background_color=region_3_col)]
+                    ]
 
-    settings_layout = [[sg.Frame(title=" farkle settings •• ", key="settings_window", layout=settings_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
+    settings_layout = [[sg.Frame(title=" farkle settings •• ", key="settings_window", layout=settings_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5, expand_x=True, element_justification="center")]]
 
     #settings_window = sg.Window('SETTINGS', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=True, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color="#332b26", titlebar_text_color="#ffd768", titlebar_font="courier 10 bold", titlebar_icon=png_icon)
-    settings_window = sg.Window(' settings ••', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=False, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
+    settings_window = sg.Window(' settings ••', settings_layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=False, grab_anywhere=True, no_titlebar=True, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
     settings_dict = {}
 
+    settings_window["blank"].update(visible=True)
     while True:
 
         event, values = settings_window.read(timeout=1000)
 
-        if event == "restore":
-            settings_dict["restore_defaults"] = True
-            settings_window.close()
-            return settings_dict
-
-        if event in players.playstyles:
-            settings_dict["set_playstyle"] = event
-            for style in players.playstyles:
-                settings_window[style].update(disabled=True if event == style else False)
-
-        if event.startswith("panel_"):
-            if event == "panel_single_player":
-                if mode_open:
-                    settings_window['-MODE-'].update(visible=False)
-                    mode_open = False
-                if names_open:
-                    settings_window['-NAMES-'].update(visible=False)
-                    names_open = False
-                if themes_open:
-                    settings_window['-THEMES-'].update(visible=False)
-                    themes_open = False
-
-                singleplayer_open = not singleplayer_open
-                settings_window["choose_single"].update(disabled=True if players.is_singleplayer else False)
-                settings_window["choose_two"].update(disabled=False if players.is_singleplayer else True)
-                settings_window['-SEC1-'].update(visible=singleplayer_open)
-
-            if event == "panel_mode":
-                if singleplayer_open:
-                    settings_window['-SEC1-'].update(visible=False)
-                    singleplayer_open = False
-                if names_open:
-                    settings_window['-NAMES-'].update(visible=False)
-                    names_open = False
-                if themes_open:
-                    settings_window['-THEMES-'].update(visible=False)
-                    themes_open = False
-
-                mode_open = not mode_open
-                for style in players.playstyles:
-                    settings_window[style].update(disabled=True if players.default_playstyle == style else False)
-
-                settings_window['-MODE-'].update(visible=mode_open)
-
-            if event == "panel_names":
-                if singleplayer_open:
-                    settings_window['-SEC1-'].update(visible=False)
-                    singleplayer_open = False
-                if mode_open:
-                    settings_window['-MODE-'].update(visible=False)
-                    mode_open = False
-                if themes_open:
-                    settings_window['-THEMES-'].update(visible=False)
-                    themes_open = False
-
-                names_open = not names_open
-                settings_window['-NAMES-'].update(visible=names_open)
-
-            if event == "panel_themes":
-                if singleplayer_open:
-                    settings_window['-SEC1-'].update(visible=False)
-                    singleplayer_open = False
-                if mode_open:
-                    settings_window['-MODE-'].update(visible=False)
-                    mode_open = False
-                if names_open:
-                    settings_window['-NAMES-'].update(visible=False)
-                    names_open = False
-
-                themes_open = not themes_open
-                settings_window['-THEMES-'].update(visible=themes_open)
-                if themes_open:
-                    settings_window["choose_tan"].update(disabled=True if "tan" in sg.theme() else False)
-                    settings_window["choose_navy"].update(disabled=True if "navy" in sg.theme() else False)
-                    settings_window["choose_arcade"].update(disabled=True if "arcade" in sg.theme() else False)
-
         if values and values.get("player_1_name"):
             settings_dict["change_names"] = values
 
-        if event == "choose_single":
-            settings_dict["set_singleplayer"] = True
-            settings_window["choose_single"].update(disabled=True)
-            settings_window["choose_two"].update(disabled=False)
+        if event:
 
-        if event == "choose_two":
-            settings_dict["set_singleplayer"] = False
-            settings_window["choose_single"].update(disabled=False)
-            settings_window["choose_two"].update(disabled=True)
+            if event == "restore":
+                settings_dict["restore_defaults"] = True
+                settings_window.close()
+                return settings_dict
 
-        if event == "choose_tan":
-            settings_dict["set_theme"] = "farkle_tan"
-            settings_window["choose_tan"].update(disabled=True)
-            settings_window["choose_navy"].update(disabled=False)
-            settings_window["choose_arcade"].update(disabled=False)
+            if event in players.playstyles:
+                settings_dict["set_playstyle"] = event
+                for style in players.playstyles:
+                    settings_window[style].update(disabled=True if event == style else False)
+
+            if event.startswith("panel_"):
+                if event == "panel_single_player":
+                    if mode_open:
+                        settings_window['-MODE-'].update(visible=False)
+                        mode_open = False
+                    if names_open:
+                        settings_window['-NAMES-'].update(visible=False)
+                        names_open = False
+                    if themes_open:
+                        settings_window['-THEMES-'].update(visible=False)
+                        themes_open = False
+
+                    singleplayer_open = not singleplayer_open
+
+                    if singleplayer_open:
+                        settings_window['blank'].update(visible=False)
+
+                    settings_window["choose_single"].update(disabled=True if players.is_singleplayer else False)
+                    settings_window["choose_two"].update(disabled=False if players.is_singleplayer else True)
+                    settings_window['-SEC1-'].update(visible=singleplayer_open)
+
+                    if not singleplayer_open:
+                        settings_window['blank'].update(visible=True)
+
+                if event == "panel_mode":
+                    if singleplayer_open:
+                        settings_window['-SEC1-'].update(visible=False)
+                        singleplayer_open = False
+                    if names_open:
+                        settings_window['-NAMES-'].update(visible=False)
+                        names_open = False
+                    if themes_open:
+                        settings_window['-THEMES-'].update(visible=False)
+                        themes_open = False
+
+                    mode_open = not mode_open
+                    for style in players.playstyles:
+                        settings_window[style].update(disabled=True if players.default_playstyle == style else False)
+
+                    if mode_open:
+                        settings_window['blank'].update(visible=False)
+
+                    settings_window['-MODE-'].update(visible=mode_open)
+
+                    if not mode_open:
+                        settings_window['blank'].update(visible=True)
+
+                if event == "panel_names":
+                    if singleplayer_open:
+                        settings_window['-SEC1-'].update(visible=False)
+                        singleplayer_open = False
+                    if mode_open:
+                        settings_window['-MODE-'].update(visible=False)
+                        mode_open = False
+                    if themes_open:
+                        settings_window['-THEMES-'].update(visible=False)
+                        themes_open = False
+
+                    names_open = not names_open
+
+                    if names_open:
+                        settings_window['blank'].update(visible=False)
+
+                    settings_window['-NAMES-'].update(visible=names_open)
+
+                    if not names_open:
+                        settings_window['blank'].update(visible=True)
+
+                if event == "panel_themes":
+                    if singleplayer_open:
+                        settings_window['-SEC1-'].update(visible=False)
+                        singleplayer_open = False
+                    if mode_open:
+                        settings_window['-MODE-'].update(visible=False)
+                        mode_open = False
+                    if names_open:
+                        settings_window['-NAMES-'].update(visible=False)
+                        names_open = False
+
+                    themes_open = not themes_open
+                    if themes_open:
+                        settings_window["choose_tan"].update(disabled=True if "tan" in sg.theme() else False)
+                        settings_window["choose_navy"].update(disabled=True if "navy" in sg.theme() else False)
+                        settings_window["choose_arcade"].update(disabled=True if "arcade" in sg.theme() else False)
+                        settings_window['blank'].update(visible=False)
+
+                    settings_window['-THEMES-'].update(visible=themes_open)
+
+                    if not themes_open:
+                        settings_window['blank'].update(visible=True)
+
+            if event == "choose_single":
+                settings_dict["set_singleplayer"] = True
+                settings_window["choose_single"].update(disabled=True)
+                settings_window["choose_two"].update(disabled=False)
+
+            if event == "choose_two":
+                settings_dict["set_singleplayer"] = False
+                settings_window["choose_single"].update(disabled=False)
+                settings_window["choose_two"].update(disabled=True)
+
+            if event == "choose_tan":
+                settings_dict["set_theme"] = "farkle_tan"
+                settings_window["choose_tan"].update(disabled=True)
+                settings_window["choose_navy"].update(disabled=False)
+                settings_window["choose_arcade"].update(disabled=False)
 
 
-        if event == "choose_navy":
-            settings_dict["set_theme"] = "farkle_navy"
-            settings_window["choose_tan"].update(disabled=False)
-            settings_window["choose_navy"].update(disabled=True)
-            settings_window["choose_arcade"].update(disabled=False)
+            if event == "choose_navy":
+                settings_dict["set_theme"] = "farkle_navy"
+                settings_window["choose_tan"].update(disabled=False)
+                settings_window["choose_navy"].update(disabled=True)
+                settings_window["choose_arcade"].update(disabled=False)
 
 
-        if event == "choose_arcade":
-            settings_dict["set_theme"] = "farkle_arcade"
-            settings_window["choose_tan"].update(disabled=False)
-            settings_window["choose_navy"].update(disabled=False)
-            settings_window["choose_arcade"].update(disabled=True)
+            if event == "choose_arcade":
+                settings_dict["set_theme"] = "farkle_arcade"
+                settings_window["choose_tan"].update(disabled=False)
+                settings_window["choose_navy"].update(disabled=False)
+                settings_window["choose_arcade"].update(disabled=True)
 
-        if event == "mode":
-            print(f"Currently the PC's playstyle is `{players.default_playstyle}`")
-            print("Change the PC player's playstyle here.")
+            if event == "leave":
+                settings_window.close()
+                return settings_dict
 
-        if event == "leave":
-            settings_window.close()
-            return settings_dict
+            if event == "leave_no_save":
+                settings_window.close()
+                return "no_save" # just here while I'm forcing settings window, remove after.
 
-        if event == "leave_no_save":
-            settings_window.close()
-            return
 
 def update_json(update_data:dict):
 
@@ -1837,14 +1959,22 @@ def main_gui():
 
     init_classes(player1 = settings.player1_name, player2 = settings.player2_name, player1_col = settings.player1_col, player2_col = settings.player2_col)
 
+    force_settings = False
+
     while True:
-        close_window, use_settings = make_window()
-        if close_window:
-            break
-        elif use_settings:
+        if force_settings:
             settings_dict = settings_window()
-            if settings_dict:
-                apply_settings(settings_dict)
+            if settings_dict and settings_dict == "no_save":
+                break
+
+        else:
+            close_window, use_settings = make_window()
+            if close_window:
+                break
+            elif use_settings:
+                settings_dict = settings_window()
+                if settings_dict and not isinstance(settings_dict, str): # added this in case I forget to remove the no_save line from settings window testing.
+                    apply_settings(settings_dict)
 
 main_gui()
 
