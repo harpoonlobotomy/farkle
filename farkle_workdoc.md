@@ -85,3 +85,21 @@ The error on line 1643 happens if you click the 'x' to close the settings window
 Settings really shouldn't have the 'x' anyway, you have to either close it by saving or not-saving. closing by the x makes it unclear what you wanted.
 
 Also, this wasn't reported but I want to make the 'settings' window a stable size whether a subsection is open or not, so it doesn't flicker and expand like it does now. It's just really unpleasant looking when it redraws itself like that.
+
+10.29am 29/4/26
+Oops. Stopped updating this apparently.
+Farkle is basically done, have just done some minor bugfixes etc since the last update. I did make the settings window stable and fix the above bug.
+Today I'm experimenting with animated gifs for the dice.
+
+Huh. Why is
+    if not window.is_closed():
+        window.close()
+    return "exit", None
+unreachable? It wasn't in the prior version of the script and I can't see why it's become unreachable now. There are a few minor changes in the above while loop but I can't see how it makes it unreachable...
+
+Oh, it's because there's no 'break' to actually exit that while loop from, only returns. Okay.
+
+3.28pm 30/4/26
+working on the animated dice still. Realised I need coloured versions, so am doing that.
+
+Can't see why it isn't finding "still" key in the base64 dict. Will look again tomorrow. Struggling to read the text on screen so maybe time to rest.
