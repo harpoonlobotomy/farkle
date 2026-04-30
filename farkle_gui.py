@@ -1,5 +1,5 @@
 """simple text-based farkle game
-started April 2026 //  [gui version] v 1.1 // harpoonlobotomy"""
+started April 2026 //  [gui version] v 1.5 // harpoonlobotomy"""
 
 # Command to build a .exe file:
 #   [cd to py file dir first] pyinstaller --onefile --noupx --icon farkle_gui.ico farkle_gui.pyw
@@ -1076,6 +1076,7 @@ def make_window():
         key_str = key_str#str("die_" + key_upper)
         #sg.Button("Hello", , use_ttk_buttons=True)
         #image_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````\x00\x00\x00\x05\x00\x01\xa5\xf6E@\x00\x00\x00\x00IEND\xaeB`\x82'
+
         button = sg.Button(button_text=text, button_color=colour, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
         dice_dict[key_str] = get_die_inst(key_str)
         return button
@@ -1138,6 +1139,7 @@ def make_window():
         if tally_entries_second:
             window["tally_table_P2"].update(tally_entries_second, visible=True)
         players.total_turns += 1
+        print_points_line('')
         print_output_text(f"{players.current.name} ends their turn with {players.current.turn_score} points, for a total score of {players.current.game_score} points.")
         #print_output_text(f"{print_colour.playernm(players.current, "output")} ends their turn with a score of [[{players.current.game_score}]].")
 
@@ -1159,17 +1161,20 @@ def make_window():
         to_json.start_game() # do this here so the first turn is always included regardless of PC or human player starting. Could get messy otherwise.
 
 
-    def print_points_line(score='', bust=False, string_print=''):
+    def print_points_line(score='', bust=False, string_print='', print_banked = False):
 
         if string_print:
             point_value = string_print
         elif not bust:
             if score:
-                point_value = f"Points from this roll: {score} / Current turn score: {players.current.turn_score}"
+                point_value = f"Points from this roll: {score} / Banked score: {players.current.turn_score}"
             else:
-                point_value = ''
+                if print_banked:
+                    point_value = f"Banked score: {players.current.turn_score}"
+                else:
+                    point_value = ''
         else:
-            point_value = f"{players.current.name} busts!!"
+            point_value = f"{players.current.name} busts!! They lose their banked score and end their turn."
         window["point_output"].update(point_value)
         return
 
@@ -1178,9 +1183,9 @@ def make_window():
         output_line_str = text
         window["output_line"].update(output_line_str)
 
-    def clear_prints():
+    def clear_prints(print_banked = True):
 
-        print_points_line()
+        print_points_line(print_banked=print_banked)
         print_output_text()
 
 
@@ -1366,7 +1371,7 @@ def make_window():
 
     tally_board = [get_tally()]
 
-    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Change single/two player, player names/colours, theme, etc."), add_dots(), make_button(width=std_btn, height=1, key_str="Rules"), add_dots(), sg.HSeparator(color=gold), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
+    settings_rules_and_exit = [[make_button(width=std_btn, height=1, key_str="Settings", tooltip_str = "Settings:\n  * change single/two player\n  * set computer player mode\n  * change player names + colours  \n  * change colour theme."), add_dots(), make_button(width=std_btn, height=1, key_str="Rules"), add_dots(), sg.HSeparator(color=gold), add_dots(), make_button(width=std_btn, height=1, key_str="Exit")],
                     [sg.Stretch(), sg.Text(text=players.scoreline(), key="print_player_stats", font=(f"courier {int(std_dot_size) + 2} bold"), text_color=theme_data().theme_dict[sg.theme()]["gold_text"], pad=0, justification="center", size=(60,2)), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2))],
                     [sg.HSeparator(color=gold)],
@@ -1375,11 +1380,11 @@ def make_window():
                      sg.Column(key="dice_layout", layout=dice_display, justification="c", vertical_alignment="center"),
                      sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center")]]
 
-    text_width = len("points from this roll: 1111 / current turn score: 1111")
+    text_width = len("points from this roll: 1111 / Banked score: 1111")
     point_output = [
                     [sg.Stretch(), sg.HSeparator(color=gold), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2), pad=2)],
-                    [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), size=(text_width, 1), pad=0, justification="center"), sg.Stretch()],
+                    [sg.Stretch(), sg.Text(point_value, key="point_output", font=(f"courier {int(std_dot_size) + 4} bold"), pad=0, justification="center"), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2), pad=2)],
                     [sg.Stretch(), sg.HSeparator(color=gold), sg.Stretch()]
                     ]
@@ -1387,10 +1392,9 @@ def make_window():
     roll_take_and_output_print =      [
                      [
                      sg.Stretch(), sg.Column(layout=make_horz_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), pad=0),
-                     make_button(width=std_btn, height=1, key_str="Roll"), make_button(width=std_btn, height=1, key_str="Take"),
+                     make_button(width=std_btn, height=1, key_str="Roll", tooltip_str=" Bank the score from the selected dice, and roll the remaining dice again - try not to bust! \n\n If you bust, the banked score will not be added to your game score and your turn will end. "), make_button(width=std_btn, height=1, key_str="Take", tooltip_str="Add the banked score from this round (if any) and the score from the selected dice to your final score, and end your turn."),
                      sg.Column(layout=make_horz_dots(size1=int(std_dot_size)+4, size2=int(std_dot_size)+2, size3=std_dot_size)),
-                     sg.Stretch(),
-                     ],
+                     sg.Stretch()],
 
                      [sg.Canvas(size=(widest_measure,2), pad=2)],
                      [sg.HSeparator(color=gold)],
@@ -1482,11 +1486,11 @@ def make_window():
 
             autoplay_loop_event, values = window.read(timeout=100)
             clear_held_and_used_dice()
-            print_points_line(string_print='')
             print_output_text(text=f"{players.current.name} is starting their turn.")
             sleep(.2)
             if check_for_close_event(autoplay_loop_event):
                 return "exit", None
+            print_points_line(string_print='', print_banked=True)
             roll_dice(do_refresh=True)
             to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True)
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
@@ -1507,7 +1511,7 @@ def make_window():
             window['-SEC1-'].update(visible=opened1)
 
         if "die_" in event and round_started:
-            clear_prints()
+            clear_prints(print_banked=True)
             die_inst = get_die_inst(event)
             if die_inst.used:
                 continue
@@ -1515,10 +1519,9 @@ def make_window():
             hold_dice(die_inst)#, value = window[event].__getattribute__("metadata"))
             score, _, output_str = get_score(players.current, set(i for i in dice.dice if i.held), print_result=False, get_score=False, test_only=True)
             print_output_text(text=output_str)
-            print_points_line(score)
+            print_points_line(score, print_banked=True)
 
         if event == "-ROLL-" and round_started:
-            clear_prints()
             held_dice = set(i for i in dice.dice if i.held)
             if not held_dice:
                 print_output_text("You must hold at least one die before rolling.")
@@ -1554,6 +1557,7 @@ def make_window():
                     round_started = False
                 else:
                     players.current.turn_score += preroll_score
+                clear_prints(print_banked=True)
 
         if event == "-TAKE-":
             if not players.current.turn_score and not (dice.dice and any(i.held for i in dice.dice)): # ""any(i.held for i in dice.dice)"" oh so that's a use for any. Good.
@@ -1977,4 +1981,3 @@ def main_gui():
                     apply_settings(settings_dict)
 
 main_gui()
-
