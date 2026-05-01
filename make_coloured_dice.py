@@ -50,6 +50,9 @@ farkle_dice = {
 
 def apply_colour(base_image, colour, target_path):
 
+    """ Oh shit. I just realised this exists:
+    multiply(image1: Image.Image, image2: Image.Image) -> Image.Image:
+    in ImageChops. Instead of just colorising I can multiply, overlay, etc. This is what I needed. Good to know."""
     def modify_gif(im:Image.Image, colour, target_path):
 
 
@@ -78,7 +81,7 @@ def apply_colour(base_image, colour, target_path):
             print(f"TARGET PATH: {target_path}")
             print("targ.n_frames: ")
             print(targ.n_frames)
-            targ.show()
+            #targ.show()
         return
 
     with Image.open(base_image) as im:
@@ -105,7 +108,6 @@ def colour_player(player_no, player_colour):
             apply_colour(filepath, player_colour, output_path)
             player[subdir][die_no] = output_path
 
-    print(f"Player: {player}")
     return player
 
 def colour_farkle(farkle_colours):
@@ -134,6 +136,8 @@ def recolour_dice(recolour_farkle=False, recolour_bust=False, recolour_player_1=
 
     if recolour_player_1:
         recolour_dict["Player_1"] = colour_player("Player_1", recolour_player_1)
+    if recolour_player_2:
+        recolour_dict["Player_2"] = colour_player("Player_2", recolour_player_2)
 
     from make_base_64_from_image import auto_make_base64
     auto_make_base64()
