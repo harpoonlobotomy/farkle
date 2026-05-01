@@ -62,7 +62,7 @@ def get_strength(in_or_out, y_pos):
         strength = 100 - (y_pos*2)
         if strength < 0:
             strength = 0
-    print(f"Strength for {in_or_out} // y_pos: {y_pos}:  ``{strength}``\n")
+    #print(f"Strength for {in_or_out} // y_pos: {y_pos}:  ``{strength}``\n")
     return strength
 
 
@@ -121,7 +121,7 @@ def get_roll(outgoing, incoming, anim_frames, recolour):
     incoming_y_pos = None
     for filepath in sorted(frame_blanks):
         with Image.open(frame_path + filepath) as f_blank:
-            print(f"f_blank open: {filepath}")
+            #print(f"f_blank open: {filepath}")
             frame_no = filepath.replace(".png", "")
 
             new = Image.new(mode="RGBA", size=f_blank.size)
@@ -130,9 +130,9 @@ def get_roll(outgoing, incoming, anim_frames, recolour):
                 with Image.open(chars_path + outgoing_path) as out_img:
                     if frame_no in movement["outgoing"]:
                         outgoing_y_pos = movement["outgoing"][frame_no]
-                        print(f"outgoing for frame no {frame_no}")
+                        #print(f"outgoing for frame no {frame_no}")
                         new.alpha_composite(out_img, (0,outgoing_y_pos))
-                        print("outgoing_y_pos")
+                        #print("outgoing_y_pos")
                         #if recolour:
                             #new = recolour_frames(new, incoming_colour, outgoing_colour, y_pos, get_strength("outgoing", y_pos))
 
@@ -141,14 +141,14 @@ def get_roll(outgoing, incoming, anim_frames, recolour):
                 with Image.open(chars_path + incoming_path) as in_img:
                     if frame_no in movement["incoming"]:
                         incoming_y_pos = movement["incoming"][frame_no]
-                        print(f"incoming for frame no {frame_no}")
+                        #print(f"incoming for frame no {frame_no}")
                         new.alpha_composite(in_img, (0,incoming_y_pos))
 
             if not outgoing_path and not incoming_path:
                 print(f"NOT OUT OR IN: {frame_no}")
                 #new_name = "char_" + char_path.replace(".png", "_") + "frame_" + filepath
                 #output_path = output_dir + "full_roll\\" + new_name
-            print(f"FRAME: {frame_no}")
+            #print(f"FRAME: {frame_no}")
             if recolour:
                 frame_mask = list(i for i in frame_masks if  i == filepath)
                 if frame_mask:
@@ -248,8 +248,8 @@ def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=Tru
 
     if continue_with_list:
         return anim_frames # for chaining longer strings.
-    print(f"len anim frames for {incoming_char}: {len(anim_frames)}")
-    anim_frames[0].save(output_dir + f"full_roll\\{output_name}.gif", append_images=anim_frames[1:], save_all=True, duration=50)
+    #print(f"len anim frames for {incoming_char}: {len(anim_frames)}")
+    anim_frames[0].save(output_dir + f"full_roll\\{output_name}.gif", append_images=anim_frames[1:], save_all=True, duration=50, optimise=False, loop=0)
     return []
 
 #transition_to_from(outgoing_char="3", incoming_char="f", start_roll=True, blank_before_incoming=True)
@@ -268,7 +268,7 @@ fark_dict = {
 #for k, v in fark_dict.items():
 #    transition_to_from(k, v, start_roll=True, blank_before_incoming=False, end_roll=False, output_name = f"{k}_to_{v}", start_from_blank=True, recolour="farkle", continue_with_list=False)
 
-make_farkle_chain = False#True
+make_farkle_chain = True
 
 if make_farkle_chain:
     anim_frames = []
@@ -278,7 +278,7 @@ if make_farkle_chain:
             for _ in range(count):
                 anim_frames = get_roll(outgoing="blank", incoming="blank", anim_frames=anim_frames, recolour="farkle")
 
-        anim_frames = transition_to_from(anim_frames, "blank", k, start_roll=False, blank_before_incoming=False, end_roll=True, output_name = f"farkle_chain_{k}_{char}", start_from_blank=True, end_with_blank=True, recolour="farkle", continue_with_list=False)
+        anim_frames = transition_to_from(anim_frames, "blank", k, start_roll=True, blank_before_incoming=False, end_roll=True, output_name = f"farkle_chain_{k}_{char}", start_from_blank=True, end_with_blank=False, recolour="farkle", continue_with_list=False)
         count += 1
 
 make_farkle_in_one = False#True
@@ -300,6 +300,13 @@ def do_window():
     import FreeSimpleGUI as sg
 
     chain_dir = output_dir + f"full_roll\\"
+    chain_gifs = os.listdir(chain_dir)
+    chain = {}
+    for i, char in enumerate(("f", "a", "r", "k", "l", "e")):
+        advance = str(i+1)
+        chain_gif = list(i for i in chain_gifs if i.startswith(f"farkle_chain_{char}_{advance}"))
+        if chain_gif:
+            chain[char] = chain_dir+chain_gif[0]
     """    def chained():
 
         chained_output = []
@@ -347,25 +354,38 @@ THE FOLLOWING SETUP DOES WORK.
 
     """
     sg.Text.char_width_in_pixels(("Courier New", 11))
-    filename = chain_dir+f"farkle_chain_f_1.gif"
-    frames = 44
-    accumImage = sg.tk.PhotoImage(file=filename, format=f'gif -index 0')
-    print(dir(accumImage))
-    data = [accumImage]
-    for i in range(1, frames):
-        print(f"i: {i}")
-        deltaImage = sg.tk.PhotoImage(file=filename, format=f'gif -index {i}')
-        accumImage.tk.call(accumImage, 'copy', deltaImage)
-        data.append(accumImage.copy())
+    data_dict = {}
+    letter_frames = {}
+    images = list()
+    longest_frames = 0
+    for letter, filename in chain.items():
+        with Image.open(filename) as f:
+            n_frames = f.n_frames
+        frames = n_frames
+        if frames > longest_frames:
+            longest_frames = frames
+        accumImage = sg.tk.PhotoImage(file=filename, format=f'gif -index 0')
+        data = [accumImage]
+        for i in range(0, frames):
+            deltaImage = sg.tk.PhotoImage(file=filename, format=f'gif -index {i}')
+            accumImage.tk.call(accumImage, 'copy', deltaImage)
+            data.append(accumImage.copy())
+        data_dict[letter] = data
+        letter_frames[letter] = frames
+        images.append(sg.Image(key=letter))
 
+    print(letter_frames)
     layout = [
-        [sg.Image(key='-IMAGE-')],
+        images,
         [sg.Button('Start/Stop')],
     ]
     window = sg.Window('Title', layout, finalize=True)
     index, running = 0, False
-    window['-IMAGE-'].update(data=data[0])
+    changed = True
+    #for letter in data_dict:
+        #window[letter].update(data=data_dict[letter][0])
 
+    print(f"Longest frames: {longest_frames}")
     while True:
 
         event, values = window.read(timeout=50)
@@ -373,9 +393,29 @@ THE FOLLOWING SETUP DOES WORK.
             break
         elif event == 'Start/Stop':
             running = not running
-        elif event == sg.TIMEOUT_EVENT and running:
-            index = (index+1) % frames
-            window['-IMAGE-'].update(data=data[index])
+
+        if running:
+            changed = True
+            index = 0
+        #elif event == sg.TIMEOUT_EVENT and running:
+        if changed:
+            changed = False
+            index = index+1#letter_frames[letter]#longest_frames
+            for letter, frames in letter_frames.items():
+                #print(f"letter: {letter} / frames: {frames}")
+                #index = (index+1) % frames#letter_frames[letter]#longest_frames
+                if index > letter_frames[letter]:
+                    do_index = 0
+                    changed = False
+                else:
+                    do_index = index
+                    changed = True
+                #print(f"letter: {letter} / index: {index}")
+                #window[letter].update_animation(chain[letter],  time_between_frames=20)
+                window[letter].update(data=data_dict[letter][do_index])
+
+
+
 
     window.close()
 
