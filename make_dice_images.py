@@ -5,6 +5,18 @@ What I need is to have the dice face blanks, + the numbers, and to have it place
 Around frame 4/5 I can do the switch between numbers. Only a few pixels of the incoming number are visible, I think it'd work.
 So i need each number 'incoming' and 'outcoming', then I should be able to say '3 out, 5 in' and have 3 roll away to show 5. I think."""
 
+"""
+So, at the start of a run and/or when player colours are changed:
+I need to generate the blank frames of incoming in the correct colours for each player die set. Save 'em in colour-identified folders so I don't regen each time. I need:
+    blank > number
+    number > blank # for rerolling
+    blank > farkle
+    blank > bust
+^ reason for the blanks is largely so I avoid having to regenerate each number going to each of (farkle, bust) for each player for each colour. It might be better though. Not sure. Stick with this for now, especially as I've not actually got it properly animating in situ yet.
+
+farkle>bust will never happen as it has to roll first. Same for the inverse as bust always leads to a new turn roll, not a start screen.
+"""
+
 from PIL import Image, ImageOps, ImageChops
 import os
 
@@ -46,26 +58,6 @@ movement = {
         }
 }
 
-def get_strength(in_or_out, y_pos):
-    """
-    colour strength: [[v v roughly]]
-        "incoming":
-            strength percent ==  (incoming[frame_no] + 100)
-
-        "outgoing":
-            strength percent == (100 - (outgoing[frame_no] * 2))
-
-    """
-    if in_or_out == "incoming":
-        strength = y_pos + 100
-    else:
-        strength = 100 - (y_pos*2)
-        if strength < 0:
-            strength = 0
-    #print(f"Strength for {in_or_out} // y_pos: {y_pos}:  ``{strength}``\n")
-    return strength
-
-
 fark_colours = { # for farkle_arcade
             "f": "#db270d",
             "a": "#ffb302",
@@ -74,31 +66,14 @@ fark_colours = { # for farkle_arcade
             "l": "#4e5b9a",
             "e": "#ae3aad"
         }
-"""
-test: 3 > "F" > 5
-"""
 
-"""for filepath in frame_blanks:
-    with Image.open(frame_path + filepath) as f_blank:
-        for section in ("incoming", "outgoing"):
-            for frame_no, y_pos in movement[section].items():
-                if filepath == f"{frame_no}.png":
-                    for char_path in chars_blanks:
-                        new = Image.new(mode="RGBA", size=f_blank.size)
-                        new.paste(f_blank)
-                        with Image.open(chars_path + char_path) as char:
-                            print(f"Char.mode: {char.mode}")
-                            new.alpha_composite(char, (0,y_pos))
-                            new_name = "char_" + char_path.replace(".png", "_") + "frame_" + filepath
-                            output_path = output_dir + section + "\\" + new_name
-                            new.save(output_path)"""
 
 def get_roll(outgoing, incoming, anim_frames, recolour):
 
     if outgoing == "blank":
         outgoing_path = None
     else:
-        print(f"incoming: {incoming}")
+        print(f"outgoing: {outgoing}")
         outgoing_path = list(i for i in chars_blanks if i == f"{str(outgoing)}.png")[0]
 
     if incoming == "blank":
@@ -109,11 +84,15 @@ def get_roll(outgoing, incoming, anim_frames, recolour):
 
     if incoming and incoming in ("f", "a", "r", "k", "l", "e"):
         incoming_colour=fark_colours[incoming]
+    elif incoming and incoming in ("dash", "b", "u", "s", "t"):
+        incoming_colour="#330303"
     else:
         incoming_colour = standard_dice_colour # later this will be player colours
 
     if outgoing and outgoing in ("f", "a", "r", "k", "l", "e"):
         outgoing_colour=fark_colours[outgoing]
+    elif outgoing and outgoing in ("dash", "b", "u", "s", "t"):
+        outgoing_colour="#330303"
     else:
         outgoing_colour = standard_dice_colour
 
@@ -130,12 +109,7 @@ def get_roll(outgoing, incoming, anim_frames, recolour):
                 with Image.open(chars_path + outgoing_path) as out_img:
                     if frame_no in movement["outgoing"]:
                         outgoing_y_pos = movement["outgoing"][frame_no]
-                        #print(f"outgoing for frame no {frame_no}")
                         new.alpha_composite(out_img, (0,outgoing_y_pos))
-                        #print("outgoing_y_pos")
-                        #if recolour:
-                            #new = recolour_frames(new, incoming_colour, outgoing_colour, y_pos, get_strength("outgoing", y_pos))
-
 
             if incoming_path:
                 with Image.open(chars_path + incoming_path) as in_img:
@@ -145,59 +119,33 @@ def get_roll(outgoing, incoming, anim_frames, recolour):
                         new.alpha_composite(in_img, (0,incoming_y_pos))
 
             if not outgoing_path and not incoming_path:
-                print(f"NOT OUT OR IN: {frame_no}")
-                #new_name = "char_" + char_path.replace(".png", "_") + "frame_" + filepath
-                #output_path = output_dir + "full_roll\\" + new_name
-            #print(f"FRAME: {frame_no}")
+                print(f"NOT OUT OR IN: {frame_no}") # just means it's blank entirely. Not a problem. Don't know why I need this...
+
             if recolour:
                 frame_mask = list(i for i in frame_masks if  i == filepath)
                 if frame_mask:
                     frame_mask = frame_mask[0]
                 else:
                     print(f"No frame mask found for {filepath}. All frame masks: \n{frame_masks}")
-                """if incoming_y_pos:
-                    print(f"incoming_y_pos: {incoming_y_pos}")
-                    incoming_strength = get_strength("incoming", incoming_y_pos)
-                else:
-                    incoming_strength = 0
-                if outgoing_y_pos:
-                    print(f"outgoing_y_pos: {outgoing_y_pos}")
-                    outgoing_strength = get_strength("outgoing", outgoing_y_pos)
-                else:
-                    outgoing_strength = 0
-                if not incoming_strength and not outgoing_strength:
-                    incoming_strength = 100
-                print(f"incominmg strength = {incoming_strength}\noutgoing_strength: {outgoing_strength}\n")
-                total = 100/(incoming_strength + outgoing_strength)
-                incoming_strength = incoming_strength * total
-                outgoing_strength = outgoing_strength * total
-                print(f"incominmg strength = {incoming_strength}\noutgoing_strength: {outgoing_strength}\n")
 
-                print(f"incoming colour: {incoming_colour}")"""
                 new = recolour_frames(new, outgoing_colour, incoming_colour, frame_mask_dir + frame_mask, frame_no)
             anim_frames.append(new)
-                #new.save(output_path)
     return anim_frames
+
 
 def recolour_frames(image:Image.Image, outgoing_colour="blue", incoming_colour="red", frame_mask=None, frame_no="06"):
 
-    #square = Image.new("RGBA", size=(100, pos_y+100), color=colour)
     square = Image.new("RGBA", size=(100, 100), color=outgoing_colour)
     alt_square = Image.new("RGBA", size=(100, 100), color=incoming_colour)
     new_image = ImageChops.overlay(image, square)
     alt_image = ImageChops.overlay(image, alt_square)
 
-    #new_image = ImageChops.blend(new_image, alt_image, int(frame_mask/100))
     alt_image = alt_image.convert("RGB")
     new_image = new_image.convert("RGB")
     with Image.open(frame_mask) as mask:
         mask = mask.convert("1")
         new_image.paste(alt_image, mask=mask)
 
-    #im = ImageOps.colorize(im, white=colour, black="black")
-    #if pos_y:
-        #image.paste(new_image, (0, 0))
-        #image.show()
     return new_image
 
 def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=True, blank_before_incoming=True, end_roll=True, output_name=None, start_from_blank=False, end_with_blank=False, recolour=None, continue_with_list=False): # maybe set blank_before_incoming if char in FARKLE else false
@@ -223,34 +171,13 @@ def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=Tru
     if end_with_blank:
         anim_frames = get_roll(outgoing=incoming_char, incoming="blank", anim_frames=anim_frames, recolour=recolour)
 
-
     if not output_name:
         output_name = outgoing_char
 
-        """for filepath in sorted(frame_blanks):
-            with Image.open(frame_path + filepath) as f_blank:
-                frame_no = filepath.replace(".png", "")
-                char_path = list(i for i in chars_blanks if i == f"{str(outgoing_char)}.png")[0]
-                new = Image.new(mode="RGBA", size=f_blank.size)
-                new.paste(f_blank)
-                with Image.open(chars_path + char_path) as char:
-                    if movement["outgoing"].get(frame_no):
-                        y_pos = movement["outgoing"][frame_no]
-                        new.alpha_composite(char, (0,y_pos))
-                    if movement["incoming"].get(frame_no):
-                        y_pos = movement["incoming"][frame_no]
-                        new.alpha_composite(char, (0,y_pos))
-
-                    new_name = "char_" + char_path.replace(".png", "_") + "frame_" + filepath
-                    output_path = output_dir + "full_roll\\" + new_name
-                    anim_frames.append(new)
-                    new.save(output_path)"""
-
     if continue_with_list:
         return anim_frames # for chaining longer strings.
-    #print(f"len anim frames for {incoming_char}: {len(anim_frames)}")
     anim_frames[0].save(output_dir + f"full_roll\\{output_name}.gif", append_images=anim_frames[1:], save_all=True, duration=50, optimise=False, loop=0)
-    return []
+    return [] # <-- always returning anim_frames ruins the farkle intro rolls and potentially other things. Makes them jumpy and bad.
 
 #transition_to_from(outgoing_char="3", incoming_char="f", start_roll=True, blank_before_incoming=True)
 
@@ -266,9 +193,22 @@ fark_dict = {
 }
 
 #for k, v in fark_dict.items():
-#    transition_to_from(k, v, start_roll=True, blank_before_incoming=False, end_roll=False, output_name = f"{k}_to_{v}", start_from_blank=True, recolour="farkle", continue_with_list=False)
+#    transition_to_from([], k, v, start_roll=True, blank_before_incoming=False, end_roll=False, output_name = f"{k}_to_{v}", start_from_blank=True, recolour="farkle", continue_with_list=False)
 
-make_farkle_chain = True
+make_farkle_chain = False#True
+
+if make_farkle_chain:
+    anim_frames = []
+    count = 0
+    for k, char in fark_dict.items(): # through the whole lot
+        if count:
+            for _ in range(count):
+                anim_frames = get_roll(outgoing="blank", incoming="blank", anim_frames=anim_frames, recolour="farkle")
+
+        anim_frames = transition_to_from(anim_frames, "blank", k, start_roll=True, blank_before_incoming=False, end_roll=True, output_name = f"farkle_chain_{k}_{char}", start_from_blank=True, end_with_blank=False, recolour="farkle", continue_with_list=False)
+        count += 1
+"""
+rolls nicely:
 
 if make_farkle_chain:
     anim_frames = []
@@ -281,16 +221,27 @@ if make_farkle_chain:
         anim_frames = transition_to_from(anim_frames, "blank", k, start_roll=True, blank_before_incoming=False, end_roll=True, output_name = f"farkle_chain_{k}_{char}", start_from_blank=True, end_with_blank=False, recolour="farkle", continue_with_list=False)
         count += 1
 
-make_farkle_in_one = False#True
-if make_farkle_in_one:
-    anim_frames = []
-    anim_frames = transition_to_from(anim_frames, "blank", "f", start_roll=True, blank_before_incoming=False, end_roll=False, output_name = f"farkle_in_one", start_from_blank=True, end_with_blank=False, recolour="farkle", continue_with_list=True)
-    anim_frames = transition_to_from(anim_frames, "f", "a", start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"farkle_in_one", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=True)
-    anim_frames = transition_to_from(anim_frames, "a", "r", start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"farkle_in_one", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=True)
-    anim_frames = transition_to_from(anim_frames, "r", "k", start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"farkle_in_one", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=True)
-    anim_frames = transition_to_from(anim_frames, "k", "l", start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"farkle_in_one", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=True)
-    anim_frames = transition_to_from(anim_frames, "l", "e", start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"farkle_in_one", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=True)
-    anim_frames = transition_to_from(anim_frames, "e", "blank", start_roll=False, blank_before_incoming=False, end_roll=True, output_name = f"farkle_in_one", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=False)
+
+"""
+def make_combination_image(make_farkle = False, make_bust=False): ## redo this to use a dict instead of listing them all out like this.
+
+    def make_from_list(incoming_list, output_path, colour=None):
+        ## For full roll for each letter before changing, set end_roll=True.
+        anim_frames = []
+        for i, key in enumerate(incoming_list):
+            if i == len(incoming_list)-3: # this one ends with blank so that even without the end_rolls on, it doesn't just jarringly end at the last letter but returns to blank.
+                anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False, end_roll=False, output_name = output_path, start_from_blank=False, end_with_blank=True, recolour=colour, continue_with_list=False)
+            elif i < len(incoming_list) -1:
+                anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False, end_roll=False, output_name = output_path, start_from_blank=False, end_with_blank=False, recolour=colour, continue_with_list=True)
+
+    farkle_list = ["blank", "f", "a", "r", "k", "l", "e", "blank"]
+    bust_list = ["blank", "dash", "b", "u", "s", "t", "dash", "blank"]
+    if make_farkle:
+        make_from_list(farkle_list, output_path = "farkle_all_in_one", colour="farkle")
+    if make_bust:
+        make_from_list(bust_list, output_path = "bust_all_in_one", colour="bust")
+
+make_combination_image(make_farkle=False, make_bust=False)#True)
 
 
 
@@ -388,7 +339,7 @@ THE FOLLOWING SETUP DOES WORK.
     print(f"Longest frames: {longest_frames}")
     while True:
 
-        event, values = window.read(timeout=50)
+        event, values = window.read(timeout=23)
         if event == sg.WIN_CLOSED:
             break
         elif event == 'Start/Stop':

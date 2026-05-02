@@ -115,3 +115,10 @@ Getting the gifs to /play/ is a more difficult thing, but it's a start. And bett
 Current issue is the outgoings - with no char in the upper section it's just left blank. But I guess that's solved by the x-in y-out. Should work on that now.
 
 Oh, at least for the farkle letters, I can have the numbers transition to blanks, and then to the charcters. Instead of needing 1>f, 2>f, 3>f, etc. All numbers to  blank, and blank to farkle chars. That'd work.
+
+10.18am 2/5/26
+Just realised all the farkle letters were 1 pixel off centred. Fixed now.
+
+God that 's' is awful in 'bust'. Needs more... structure.
+
+Reorganised the main 'make contained sequence in single image' section so now it works through the list automatically, so I can feed it any list. Much better than having to specify the outgoing/incoming for each section.
