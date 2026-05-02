@@ -392,15 +392,78 @@ class pos_data:
         print(text, end='')
         #print(self.clearline, end='')
 
-def colour_dice_sets(_dice_:dice_data=None):
+
+class dice_gifs:
+    """ num_by_colour includes every number to every number, and every other char to blank (and inverse.)"""
+    def __init__(self):
+        self.keys = ["blank", "1", "2", "3", "4", "5", "6", "f", "a", "r", "k", "l", "e", "dash", "b", "u", "s", "t"]
+        self.player_1_path:str = ""
+        self.player_1_gifs:dict = {}#{{i:""} for i in keys} # each inner dict is {die_val: filepath} // from_x_to_y is always outgoing>incoming, and always stored on the x.
+        self.player_2_path:str = ""
+        self.player_2_gifs:dict = {} # are these filepaths or Image.Image? Probably the former.
+        self.farkle_gifs:dict = {}
+        self.bust_gifs:dict = {}
+        self.gif_frames = {} # filename > list of frames. Seems excessively wasteful and bad for memory. But idk what else to do about actually playing the damn gifs.
+        self.held_still:dict[str:str] = {} # 1: held_1_filepath == dice_graphics\BASE\die_states
+        self.used_still:dict[str:str] = {} # 1: used_1_filepath
+
+gif_data = dice_gifs()
+
+def colour_dice_sets():
     """ Use PIL to colour the dice according to player colours.
     ! The base64 images are the post-coloured ones, not the grey ones."""
-    from make_coloured_dice import recolour_dice
-    print(f"settings.player1_col: {settings.player1_col}")
-    recolour_dict = recolour_dice(recolour_farkle=True, recolour_player_1=settings.player1_col, recolour_player_2=settings.player2_col, game_theme=settings.game_theme)
+    import os
+    for player in (players.player_1, players.player_2):
+        player_dice_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{player.skin}\\"
+        if not os.path.isdir(player_dice_path) or len(os.listdir(player_dice_path)) < 80: # arbitrarily 80 for now to catch anything obviously lacking.
+            from make_dice_images import colour_players_dice
+            colour_players_dice(player_colour=player.skin, force_recolour=True)
+
+
+    gif_data.player_1_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_1.skin}\\"
+    for key in gif_data.keys:
+        results = list(f"{gif_data.player_1_path}{i}" for i in os.listdir(gif_data.player_1_path) if i.split("_to_")[0] == key)
+        gif_data.player_1_gifs[key] = results
+
+    gif_data.player_2_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_2.skin}\\"
+    for key in gif_data.keys:
+        results = list(f"{gif_data.player_1_path}{i}" for i in os.listdir(gif_data.player_2_path) if i.split("_to_")[0] == key)
+        gif_data.player_2_gifs[key] = results
+
+    self_roll_dir = f"{os.getcwd()}\\dice_graphics\\BASE\\self_roll\\"
+    full_roll_paths = os.listdir(self_roll_dir)
+    for letter in "farkle":
+        if full_roll_paths:
+            results = list(f"{self_roll_dir}{i}" for i in full_roll_paths if f"roll_{letter}" in i) # only pure farkle letters here. Anything that mixes with player colours is in the player dict.
+            gif_data.farkle_gifs[letter] = results
+    print(f"gif_data.farkle_gifs: {gif_data.farkle_gifs}")
+    for letter in ("dash", "b", "u", "s", "t"):
+        if full_roll_paths:
+            results = list(f"{self_roll_dir}{i}" for i in full_roll_paths if f"roll_{letter}" in i)
+            gif_data.bust_gifs[letter] = results # might not keep these separate for long. Feels a little silly.
+
+    for file in os.listdir(f"{os.getcwd()}\\dice_graphics\\BASE\\die_states\\"):
+        val = file[:1]
+        if "held" in file:
+            gif_data.held_still[val] = f"{os.getcwd()}\\dice_graphics\\BASE\\die_states\\" + file
+        else:
+            gif_data.used_still[val] = f"{os.getcwd()}\\dice_graphics\\BASE\\die_states\\" + file
+
+    """gif_data.player_1_gifs = os.listdir(gif_data.player_1_path)
+    gif_data.player_2_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_2.skin}"
+    gif_data.player_2_gifs = os.listdir(gif_data.player_2_path)
+"""
+
+    #from make_coloured_dice import recolour_dice
+    #print(f"settings.player1_col: {settings.player1_col}")
+    #recolour_dict = recolour_dice(recolour_farkle=True, recolour_player_1=settings.player1_col, recolour_player_2=settings.player2_col, game_theme=settings.game_theme)
+    """ ["farkle"]
+        ["Player_1"]
+        ["Player_2"]
+    """
     #if recolour_dict.get("farkle"):
 
-    import json
+    """import json
     with open("dice_graphics\\die_base64.json", "r") as base_64_file:
         base_64_data = json.load(base_64_file)
 
@@ -415,7 +478,7 @@ def colour_dice_sets(_dice_:dice_data=None):
         else:
             #print(f"Entry: {entry} being added to [raw_graphics[{die_no}]]")
             _dice_.raw_graphics[die_no]["still"] = data
-            #print(f'_dice_.raw_graphics[{die_no}]["still"]: {_dice_.raw_graphics[die_no]["still"]}')
+            #print(f'_dice_.raw_graphics[{die_no}]["still"]: {_dice_.raw_graphics[die_no]["still"]}')"""
     """for i in ("f", "a", "r", "k", "l", "e"):
         if _dice_.raw_graphics.get(i):
             print(f"i in raw_graphics: {i}")
@@ -708,8 +771,8 @@ class playerClass:
         self.default_playstyle = "harpoon"
 
         self.players:set = set()
-        self.player_1 = None
-        self.player_2 = None
+        self.player_1:playerInst = None
+        self.player_2:playerInst = None
         self.current:playerInst = None
         self.opponent:playerInst = None
         self.autoplay = False
@@ -1018,15 +1081,20 @@ def make_window():
         #print(f"dice.raw_graphics: die_key: {die_key}")
         die_no = die_key.replace("die_", "")
         #print(dice.raw_graphics[die_no].keys())
-        gif = dice.raw_graphics[die_no]["anim"]
+
+        gifs = gif_data.player_1_gifs if players.current == players.player_1 else gif_data.player_2_gifs
+        gif = list(i for i in gifs[die_no] if f"{str(die_no)}_to_{str(die_no)}" in i)[0]
+
+        #gif = dice.raw_graphics[die_no]["anim"]
         part_1 = part_2 = part_3 = False
         if len(die_key) == 1:
             die_key = "die_" + str(die_key)
-        framerate = 23
+        framerate = 100
         while True and not part_1:
-            event, values = window.read(timeout=13)     # loop every 10 ms to show that the 100 ms value below is used for animation
+            event, values = window.read(timeout=22)     # loop every 10 ms to show that the 100 ms value below is used for animation
             window.timer_start(50*framerate)
-            window[die_key].update_animation(gif,  time_between_frames=framerate)
+            print(f"\nGIF: {gif}\n")
+            window[die_key].update_animation(source=gif,  time_between_frames=framerate)
             print(f"event: {event}")
             if event and event == "__TIMER EVENT__":
                 framerate = 20
@@ -1057,8 +1125,7 @@ def make_window():
         event, values = window.read(timeout=100)
         die_img = window[die_key] #type:sg.Image
 
-        gif = dice.raw_graphics[die_key.replace("die_", "")]["still"]
-        die_img.update(data=gif)#, size=(100,100))
+        die_img.update(filename=gif)#, size=(100,100))
 
 
     def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False):
@@ -1075,8 +1142,11 @@ def make_window():
 
             else:
                 if preroll:
+                    die_here:sg.Image = window[dice_place]
+                    die_here.update(image_filename = gif_data.farkle_gifs[no_to_farkle[dice_place]][0])
+                    #with open(gif_data.farkle_gifs[no_to_farkle[dice_place]][0]) as m:
 
-                    window[dice_place].update(data=dice.raw_graphics[no_to_farkle[dice_place]]["still"])
+                    #window[dice_place].update(data=dice.raw_graphics[no_to_farkle[dice_place]]["still"])
                     window.refresh()
                     sleep(.075)
                     """
@@ -1095,14 +1165,13 @@ def make_window():
 
                 else:
                     if die_inst.held:
-                        window[dice_place].update(button_color=button_held)
+                        window[dice_place].update(filename=gif_data.held_still[str(die_inst.value)])
+                        #window[dice_place].update(button_color=button_held)
                     elif die_inst.used:
-                        window[dice_place].update(button_color=button_used)
+                        window[dice_place].update(filename=gif_data.used_still[str(die_inst.value)])
+                        #window[dice_place].update(button_color=button_used)
                     else:
-                        current_player_dice = dice.player_dice.get("Player_1") if players.current == players.player_1 else dice.player_dice.get("Player_2")
-                        window[dice_place].update(data=dice.raw_graphics[[dice_place]]["still"])
-                        if dice_place != "die_1":
-                            window[dice_place].update(button_color=players.current.skin)
+                        window[dice_place].update(filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
 
             if do_refresh:
                 window.refresh()
@@ -1204,7 +1273,9 @@ def make_window():
         #print(f"dice.raw_graphics: {dice.raw_graphics}")
         #if key_str == "die_1":
             #button = sg.Image(data=dice.raw_graphics[key_str]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
-        button = sg.Image(data=dice.raw_graphics[no_to_farkle[key_str]]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
+        #button = sg.Image(data=dice.raw_graphics[no_to_farkle[key_str]]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
+        #button = sg.Image(filename=gif_data.farkle_gifs[no_to_farkle[key_str]][0], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
+        button = sg.Button(use_ttk_buttons=True, image_filename=gif_data.farkle_gifs[no_to_farkle[key_str]][0], enable_events=True, key=key_str, right_click_menu=['UNUSED', ['Exit']], pad=0, image_size=(50,50))
             #button = sg.Graph(canvas_size=(50,50), graph_bottom_left=(0,50), graph_top_right=(50,0), enable_events=True, key=key_str)
             #button = sg.Button(use_ttk_buttons=True, image_data=gifs[0], enable_events=True, key=key_str, right_click_menu=['UNUSED', ['Exit']], pad=0, image_size=(50,50))
         #else:
@@ -1703,7 +1774,6 @@ def make_window():
             if round_started and round_started == "end_game":
                 clear_print_lines_before_close()
                 return "exit", None
-                break
 
         if event == "-SETTINGS-":
             clear_prints()
@@ -2100,7 +2170,7 @@ def main_gui():
 
     init_classes(player1 = settings.player1_name, player2 = settings.player2_name, player1_col = settings.player1_col, player2_col = settings.player2_col)
 
-    colour_dice_sets(dice)
+    colour_dice_sets()
 
     force_settings = False
 
