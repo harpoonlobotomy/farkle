@@ -163,9 +163,9 @@ def recolour_frame(image:Image.Image, outgoing_colour="blue", incoming_colour="r
         new_image = image
     else:
         square = Image.new("RGBA", size=(100, 100), color=outgoing_colour)
-        square.show()
+        #square.show()
         new_image = ImageChops.overlay(image, square)
-        new_image.show()
+        #new_image.show()
         if outgoing_colour == incoming_colour:
             image
             new_image = new_image.convert("RGB")
@@ -250,16 +250,16 @@ if make_farkle_chain:
         count += 1
 
 
-def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None): ## redo this to use a dict instead of listing them all out like this.
+def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None, end_blank=True): ## redo this to use a dict instead of listing them all out like this.
 
-    def make_from_list(incoming_list, output_path, colour=None, subfolder=None, is_other=False):
+    def make_from_list(incoming_list, output_path, colour=None, subfolder=None, is_other=False, end_blank=True):
         ## For full roll for each letter before changing, set end_roll=True.
         anim_frames = []
-        start_and_end_blank = is_other
+        start_and_end_blank = False#is_other
         for i, key in enumerate(incoming_list):
             if i == len(incoming_list)-2: # this one ends with blank so that even without the end_rolls on, it doesn't just jarringly end at the last letter but returns to blank.
                 anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False,
-                        end_roll=False, output_name = output_path, start_from_blank=False, end_with_blank=True, recolour=colour, continue_with_list=False, subfolder=subfolder)
+                        end_roll=False, output_name = output_path, start_from_blank=False, end_with_blank=end_blank, recolour=colour, continue_with_list=False, subfolder=subfolder)
             elif i == 0 and start_and_end_blank:
                 anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False,
                         end_roll=False, output_name = output_path, start_from_blank=True, end_with_blank=False, recolour=colour, continue_with_list=True, subfolder=subfolder)
@@ -274,7 +274,7 @@ def make_combination_image(make_farkle = False, make_bust=False, make_other=None
     if make_bust:
         make_from_list(bust_list, output_path = "bust_all_in_one", colour="bust")
     if make_other:
-        make_from_list(make_other, output_path = make_other, colour=make_other_colour, subfolder = other_subfolder) # is_other=True to add blank to start
+        make_from_list(make_other, output_path = make_other, colour=make_other_colour, subfolder = other_subfolder, end_blank=False) # is_other=True to add blank to start
 """
 make number > bust
 """
@@ -488,7 +488,7 @@ THE FOLLOWING SETUP DOES WORK.
                     changed = True
                 #print(f"letter: {letter} / index: {index}")
                 #window[letter].update_animation(chain[letter],  time_between_frames=20)
-                window[letter].update(source=data_dict[letter][do_index])
+                window[letter].update(data=data_dict[letter][do_index])
 
 
 
@@ -584,10 +584,10 @@ def held_and_used():
 
                 new_image = recolour_frame(new, outgoing_colour=button_held, incoming_colour=button_held)
                 new_image.save(f"{output_dir}BASE\\die_states\\{char.replace(".png", "")}_held.png")
-                new_image.show()
+                #new_image.show()
                 new_image = recolour_frame(new, outgoing_colour=button_used, incoming_colour=button_used)
                 new_image.save(f"{output_dir}BASE\\die_states\\{char.replace(".png", "")}_used.png")
-                new_image.show()
+                #new_image.show()
 
 
 if "__main__" == __name__:
@@ -596,14 +596,14 @@ if "__main__" == __name__:
     start_time = time.time()
 
     #colour_players_dice(player_colour="#78A73A", force_recolour=True)
-    held_and_used()
+    #held_and_used()
     end_time = time.time()
     seconds = (end_time - start_time)
     print("%.4f" % seconds) ## 2.4029 seconds as of 4.07pm, 2/5/26, for 82 files.
 
     #make_combination_image(make_farkle=False, make_bust=False, make_other="41b5162342", make_other_colour="#5E129C", other_subfolder="testing")#True)
     #make_player_dice("#11D49A")
-    #do_window()
+    do_window()
     #make_all_die_combinations()
     #compile_die()
 
