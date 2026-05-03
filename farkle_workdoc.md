@@ -122,3 +122,51 @@ Just realised all the farkle letters were 1 pixel off centred. Fixed now.
 God that 's' is awful in 'bust'. Needs more... structure.
 
 Reorganised the main 'make contained sequence in single image' section so now it works through the list automatically, so I can feed it any list. Much better than having to specify the outgoing/incoming for each section.
+
+
+Ooooh. I should just make all the combinations in greyscale then colour them per player. Goddamn why was I not doing that?
+
+
+3.38pm
+working on the automated recolouring now. For some reason blank>letter works, but letter>blank doesn't, will need to check.
+
+Okay fixed it, had the wrong colour assigned on one of the lines.
+
+1.17am
+kinda sort of working. Ish. Not very well though. Will work on it again tomorrow.
+
+10.59am 3/5/26
+So. I sort of have it working, but it's rough.
+The farkle intro bit is the neatest so far, the numbers rolling are glitchy.
+
+For the farkle bit, this is what I have now:
+
+accumImage = sg.tk.PhotoImage(file=chain[char], format=f'gif -index 0')
+for i in range(0, frames):
+    deltaImage = sg.tk.PhotoImage(file=chain[char], format=f'gif -index {i}')
+    accumImage.tk.call(accumImage, 'copy', deltaImage)
+    window[farkle_to_no[char]].update(data=accumImage)
+
+If I just try to play deltaImage it is visually tearing, like in the version where I tried to use update_animation.
+
+Also, while they visually light up as held, dice aren't held. Though for some reason it does recognise it if you select all dice as a large straight.
+
+it always prerolls place_1 for player_1.
+
+I need to get default images for each of the characters, because they're all on the wrong frame. Just by one or two but it's a pain. Originally I had the rotation start and end with the good frame but that put a pause in the middle of every multiple-face roll so I removed it. Need to save a still like I originally planned so I can use that at the end of any roll and the opening of the game.
+
+Also, it marks die as 'used' /after/ rolling the others. I want to mark it first, then roll what's left.
+
+Okay, got it to stop prerolling the first die. That's nice.
+
+I want the intro farkle dice to start from blank, I think.
+
+Ohh. Interesting. If I tell it to redo the colours before taking the score, all the non-held dice move on a frame. They were in the right place initially.
+
+So this:
+filename=gif_data.player_1_gifs[str(die_inst.value)][0]
+is a frame too late
+
+The pause between clicking roll and the roll starting (where it makes the combined gif) isn't too long, but it's present. Going to try just playing those gif segments in sequence instead of combining them.
+
+It is actually playable now, though, with the gifs. Needs a lot of refinement for sure but, it's functioning. Which is nice.

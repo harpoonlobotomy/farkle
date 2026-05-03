@@ -434,9 +434,9 @@ def colour_dice_sets():
     for player in (players.player_1, players.player_2):
         player_dice_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{player.skin}\\"
         if not os.path.isdir(player_dice_path) or len(os.listdir(player_dice_path)) < 80: # arbitrarily 80 for now to catch anything obviously lacking.
+            print(f"Generating dice images for {player}")
             from make_dice_images import colour_players_dice
             colour_players_dice(player_colour=player.skin, force_recolour=True)
-
 
     gif_data.player_1_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_1.skin}\\"
     for key in gif_data.keys:
@@ -453,7 +453,8 @@ def colour_dice_sets():
     for letter in "farkle":
         if full_roll_paths:
             results = list(f"{self_roll_dir}{i}" for i in full_roll_paths if f"roll_{letter}" in i) # only pure farkle letters here. Anything that mixes with player colours is in the player dict.
-            gif_data.farkle_gifs[letter] = results
+            if results:
+                gif_data.farkle_gifs[letter] = results[0]
     #print(f"gif_data.farkle_gifs: {gif_data.farkle_gifs}")
     for letter in ("dash", "b", "u", "s", "t"):
         if full_roll_paths:
@@ -542,10 +543,6 @@ class dice_data:
         self.skin = None
         self.dice:set[die] = set()
         self.by_no:dict[int, die] = {}
-        self.raw_graphics:dict[str[str, bytes]] = {} # <- plain grey starting point
-        self.farkle_die:dict[str, bytes] = {} # the FARKLE coloured die
-        self.bust_die:dict[str, bytes] = {} # the -BUST- coloured die
-        self.player_dice:dict[str[str[str, bytes]]] = {}
         """player_no[die_no] = {'still': bytes, 'anim': bytes}"""
         self.force_dicerolls = False
 
@@ -1080,9 +1077,6 @@ def make_window():
     def run_gif_anim(gif_filepath, die_key):
 
         sg.Text.char_width_in_pixels(("Courier New", 11))
-        longest_frames = 0
-
-        data_dict = {}
 
         image = Image.open(gif_filepath)
         frames = image.n_frames
@@ -1092,88 +1086,24 @@ def make_window():
             deltaImage = sg.tk.PhotoImage(file=gif_filepath, format=f'gif -index {i}')
             accumImage.tk.call(accumImage, 'copy', deltaImage)
             data.append(accumImage.copy())
-        data_dict[die_key] = data
+            window[die_key].update(data=accumImage)
 
-
-        for i in range(0,frames): # single rotati
-            window[die_key].update(data=data_dict[die_key][i])
-            sleep(.03)
+            sleep(.02)
             window.refresh()
-        #for letter, filename in chain.items():
-        #itered =  ImageSequence.Iterator(Image.open(gif_filepath)) < - shows the same frame no matter what. I'm clearly doing something wrong.
 
-            #event, values = window.read(timeout=50)
-        #for frame in itered:
-            #window[die_key].update(image_source=frame)
-
-
-
-        """print(f"GIF FILEPATH: {gif_filepath}")
-        with Image.open(gif_filepath) as im:
-            frames = im.n_frames
-            print(f"Number of frames: {frames}")
-            if frames > longest_frames:
-                longest_frames = frames
-            for i in range(0, frames):
-                im.seek(i)
-## Every frame is the same when outputted even immediately after seek. It's just a still image, no frames at all. But the incoming gif does have those frames.
-
-    def process_thread():
-        global index
-        while True:
-            sleep(0.01)
-            index = (index + 1) % frames
-            window.write_event_value(die_key, index)
-
-                data = image_to_data(im, i)
-                #print(f"DATA: {data}")
-                die_window = window[die_key] #type: sg.Button
-                die_window.update(image_data=data)
-            #exit()"""
-
-        """accumImage = sg.tk.PhotoImage(file=gif_filepath, format=f'gif -index 0')
-            data = [accumImage]
-            for i in range(1, frames):
-                deltaImage = sg.tk.PhotoImage(file=gif_filepath, format=f'gif -index {i}')
-                accumImage.tk.call(accumImage, 'copy', deltaImage)
-                data.append(accumImage.copy())"""
-            #with open(png_file, "rb") as f:
-                #encoded_image = base64.b64encode(f.read())
-
-        #for i in range(0, frames):
-           # die_window.update(image_data=data[i])
     def play_farkle_intro():
-        #die_here.update(image_filename = gif_data.farkle_gifs[no_to_farkle[dice_place]][0])
-        import os
-        output_dir = f"{os.getcwd()}\\dice_graphics\\"
-        chain_dir = output_dir + f"BASE\\self_roll\\"
-        chain_gifs = os.listdir(chain_dir)
-        chain = {}
-        data_dict = {}
+
         for i, char in enumerate(("f", "a", "r", "k", "l", "e")):
-            chain_gif = list(i for i in chain_gifs if i.startswith(f"full_roll_{char}"))
-            if chain_gif:
-                chain[char] = chain_dir+chain_gif[0]
-
-
-            image = Image.open(chain[char])
+            chain_gif = gif_data.farkle_gifs[char]
+            image = Image.open(chain_gif)
             frames = image.n_frames
-            accumImage = sg.tk.PhotoImage(file=chain[char], format=f'gif -index 0')
-            data = [accumImage]
+            accumImage = sg.tk.PhotoImage(file=chain_gif, format=f'gif -index 0')
             for i in range(0, frames):
-                deltaImage = sg.tk.PhotoImage(file=chain[char], format=f'gif -index {i}')
+                deltaImage = sg.tk.PhotoImage(file=chain_gif, format=f'gif -index {i}')
                 accumImage.tk.call(accumImage, 'copy', deltaImage)
-                data.append(accumImage.copy())
-            data_dict[char] = data
-
-
-        for key in ("farkle"):
-            for i in range(0,frames): # single rotati
-                window[farkle_to_no[key]].update(data=data_dict[key][i])
+                window[farkle_to_no[char]].update(data=accumImage)
                 sleep(.03)
                 window.refresh()
-
-
 
 
     if settings.game_theme == "arcade":
@@ -1208,6 +1138,7 @@ def make_window():
         import os
         if farkle:
             play_farkle_intro()
+            return
             #for die in no_to_farkle:
                 #run_gif_anim(f"{os.getcwd()}\\dice_graphics\\BASE\\self_roll\\full_roll_{no_to_farkle[die]}", die_key)
             #exit()
@@ -1217,6 +1148,8 @@ def make_window():
         dice_rolled = list(str(i) for i in random_selection)
         if not die_inst:
             die_inst = dice.by_no[int(die_key.replace("die_", ""))]
+        die_inst.value = int(dice_rolled[-1])
+        print(f"die inst value: {die_inst} // {die_inst.value}")
         dice_rolled.insert(0, str(die_inst.value))
         dice_rolled = "".join(dice_rolled)
         make_combination_image(make_farkle = False, make_bust=False, make_other=dice_rolled, make_other_colour = players.current.skin, other_subfolder="random_rolls\\", end_blank=False)
@@ -1224,57 +1157,16 @@ def make_window():
         target_file = target_dir + dice_rolled + ".gif"
         print(f"TARGET FILE: {target_file}")
 
-        #gif = dice.raw_graphics[die_no]["anim"]
-        #part_1 = part_2 = part_3 = False
         if len(die_key) == 1:
             die_key = "die_" + str(die_key)
-        #framerate = 100
-        while True:# and not part_1:
-            #event, values = window.read(timeout=50)     # loop every 10 ms to show that the 100 ms value below is used for animation
-            #window.timer_start(50*framerate)
-            print(f"\nGIF: {target_file}\n")
-            run_gif_anim(target_file, die_key)
-            break
-            #window[die_key].update(image_filename=target_file)
-            #print(f"event: {event}")
-            if event and event == "__TIMER EVENT__":
-                framerate = 20
-                window.timer_stop_all()
-                #window.timer_stop(values['__TIMER EVENT__'])
-                part_1 = True
+        print(f"\nGIF: {target_file}\n")
+        run_gif_anim(target_file, die_key)
 
-        """while True and not part_2:
-            event, values = window.read(timeout=52)
-            window.timer_start(50*framerate)
-            window[die_key].update_animation(gif,  time_between_frames=framerate*2)
-            if event and event == "__TIMER EVENT__":
-                framerate = 10
-                window.timer_stop_all()
-                part_2 = True
-                break
-
-        while True and not part_3:
-            event, values = window.read(timeout=52)
-            window.timer_start(20*framerate)
-            window[die_key].update_animation(gif,  time_between_frames=framerate*10)
-            if event and event == "__TIMER EVENT__":
-                framerate = 5
-                window.timer_stop_all()
-                part_3 = True
-                break"""
-        #event, values = window.read(timeout=100)
-        #die_img = window[die_key] #type:sg.Image
-
-        #die_img.update(image_filename=target_file)#, size=(100,100))
-
-
-    def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False):
+    def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False, only_held=False):
 
         def _do_colour(die_inst, do_refresh=False, bust=False):
 
             dice_place = "die_" + str(die_inst.place_no)
-            #window[dice_place].update(button_color="white")
-            #sleep(.02)
 
             if bust:
                 #window[dice_place].update(bust_text[dice_place])
@@ -1284,36 +1176,18 @@ def make_window():
                 if preroll:
                     die_here:sg.Image = window[dice_place]
                     #run_gif_anim(gif_filepath = gif_data.farkle_gifs[no_to_farkle[dice_place]][0], die_key=dice_place)
-                    die_here.update(filename = gif_data.farkle_gifs[no_to_farkle[dice_place]][0])
-                    #with open(gif_data.farkle_gifs[no_to_farkle[dice_place]][0]) as m:
-
-                    #window[dice_place].update(data=dice.raw_graphics[no_to_farkle[dice_place]]["still"])
-                    window.refresh()
-                    #sleep(.075)
-                    """
-                    if dice_place == "die_1":
-                        #print(f"dice.raw_graphics.get('f'): {dice.raw_graphics.get('f')}")
-                        window[dice_place].update(data=dice.raw_graphics["f"]["still"])
-                        window.refresh()
-                        sleep(.075)
-                    else:
-                        window[dice_place].update(preroll_text[dice_place], button_color="white")
-                        window.refresh()
-                        sleep(.075)
-                        colour = preroll_cols[dice_place]
-                        window[dice_place].update(preroll_text[dice_place], button_color=colour)"""
-                    #window[dice_place].update()
+                    die_here.update(filename = gif_data.farkle_gifs[no_to_farkle[dice_place]])
 
                 else:
                     if die_inst.held:
                         #window[dice_place].update(image_filename=gif_data.held_still[str(die_inst.value)])
                         window[dice_place].update(filename=gif_data.held_still[str(die_inst.value)])
                         #window[dice_place].update(button_color=button_held)
-                    elif die_inst.used:
+                    elif die_inst.used and not only_held:
                         #window[dice_place].update(image_filename=gif_data.used_still[str(die_inst.value)])
                         window[dice_place].update(filename=gif_data.used_still[str(die_inst.value)])
                         #window[dice_place].update(button_color=button_used)
-                    else:
+                    elif not only_held:
                         #window[dice_place].update(image_filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
                         window[dice_place].update(filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
 
@@ -1384,6 +1258,8 @@ def make_window():
 
 
         for i, die_inst in dice_dict.items():
+            if die_inst.used:
+                continue
             if used_dice and die_inst in used_dice:
                 continue
             else:
@@ -1419,7 +1295,7 @@ def make_window():
         #if key_str == "die_1":
             #button = sg.Image(data=dice.raw_graphics[key_str]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
         #button = sg.Image(data=dice.raw_graphics[no_to_farkle[key_str]]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
-        button = sg.Image(filename=gif_data.farkle_gifs[no_to_farkle[key_str]][0], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
+        button = sg.Image(filename=gif_data.farkle_gifs[no_to_farkle[key_str]], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
         #button = sg.Button(use_ttk_buttons=True, image_filename=gif_data.farkle_gifs[no_to_farkle[key_str]][0], enable_events=True, key=key_str, right_click_menu=['UNUSED', ['Exit']], pad=0, image_size=(50,50))
             #button = sg.Graph(canvas_size=(50,50), graph_bottom_left=(0,50), graph_top_right=(50,0), enable_events=True, key=key_str)
             #button = sg.Button(use_ttk_buttons=True, image_data=gifs[0], enable_events=True, key=key_str, right_click_menu=['UNUSED', ['Exit']], pad=0, image_size=(50,50))
@@ -1771,7 +1647,7 @@ def make_window():
     window = sg.Window(' farkle ••', layout, keep_on_top=True, finalize=True, alpha_channel=1.0, disable_close=True, grab_anywhere=False, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
     window['-TAKE-'].bind("<Return>", "_Enter")
 
-    colour_dice(preroll=True)
+    #colour_dice(preroll=True) # not needed here
     round_started = False
     opened1 = False
     window['-SEC1-'].update(visible=False)
@@ -1795,8 +1671,8 @@ def make_window():
                 clear_prints()
             return "exit", None
 
-        if not window.is_closed(quick_check=False):
-            colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True)
+        #if not window.is_closed(quick_check=False):
+            #colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True) < needed? Not sure.
 
         used_dice = None
         if players.is_singleplayer and players.current == players.player_2:
@@ -1837,7 +1713,7 @@ def make_window():
 
             autoplay_loop_event, values = window.read(timeout=100)
             play_farkle_intro()#roll_animated_die(farkle=True)
-            roll_animated_die()
+            #roll_animated_die()
             clear_held_and_used_dice()
             print_output_text(text=f"{players.current.name} is starting their turn.")
             sleep(.2)
@@ -1870,6 +1746,7 @@ def make_window():
             if die_inst.used:
                 continue
             window[event].__getattribute__("metadata")
+            print(f"HELD DICE: {set(i for i in dice.dice if i.held)}")
             hold_dice(die_inst)#, value = window[event].__getattribute__("metadata"))
             score, _, output_str = get_score(players.current, set(i for i in dice.dice if i.held), print_result=False, get_score=False, test_only=True)
             print_output_text(text=output_str)
@@ -1889,6 +1766,7 @@ def make_window():
                 for i in dice.dice:
                     if i.held:
                         i.held=False
+                colour_dice(do_refresh=True, only_held=True)
                 if check_for_close_event(event):
                     return "exit"
                 used_dice = set(i for i in dice.dice if i.used)
