@@ -106,21 +106,24 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
 
     if incoming and incoming in ("f", "a", "r", "k", "l", "e"):
         incoming_colour=fark_colours[incoming]
-    elif incoming and incoming in ("dash", "b", "u", "s", "t"):
+    elif incoming and incoming in ("d", "b", "u", "s", "t"):
         incoming_colour=bust_colour
     else:
         incoming_colour = incoming_colour if incoming_colour else recolour if recolour and isinstance(recolour, str) else standard_dice_colour # later this will be player colours
 
     if outgoing and outgoing in ("f", "a", "r", "k", "l", "e"):
         outgoing_colour=fark_colours[outgoing]
-    elif outgoing and outgoing in ("dash", "b", "u", "s", "t"):
+    elif outgoing and outgoing in ("d", "b", "u", "s", "t"):
         outgoing_colour=bust_colour
     else:
         outgoing_colour = outgoing_colour if outgoing_colour else recolour if recolour and isinstance(recolour, str) else standard_dice_colour
 
+    #print(f"Outgoing colour; {outgoing_colour} / used_colour: {button_used}")
     outgoing_y_pos = None
     incoming_y_pos = None
     for filepath in sorted(frame_blanks):
+        if filepath == "00.png":
+            continue
         with Image.open(frame_path + filepath) as f_blank:
             #print(f"f_blank open: {filepath}")
             frame_no = filepath.replace(".png", "")
@@ -143,7 +146,7 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
             #if not outgoing_path and not incoming_path:
                 #print(f"NOT OUT OR IN: {frame_no}") # just means it's blank entirely. Not a problem. Don't know why I need this...
 
-            if recolour:
+            if recolour or (incoming_colour and outgoing_colour):
                 frame_mask = list(i for i in frame_masks if  i == filepath)
                 if frame_mask:
                     frame_mask = frame_mask[0]
@@ -250,31 +253,28 @@ if make_farkle_chain:
         count += 1
 
 
-def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None, end_blank=True): ## redo this to use a dict instead of listing them all out like this.
+def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None, end_blank=True, filename="temp"): ## redo this to use a dict instead of listing them all out like this.
 
     def make_from_list(incoming_list, output_path, colour=None, subfolder=None, is_other=False, end_blank=True):
         ## For full roll for each letter before changing, set end_roll=True.
         anim_frames = []
-        start_and_end_blank = False#is_other
+
         for i, key in enumerate(incoming_list):
-            if i == len(incoming_list)-2: # this one ends with blank so that even without the end_rolls on, it doesn't just jarringly end at the last letter but returns to blank.
+            if i == len(incoming_list)-2: # is -2 so that the [i+1] lands on the last entry.
                 anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False,
                         end_roll=False, output_name = output_path, start_from_blank=False, end_with_blank=end_blank, recolour=colour, continue_with_list=False, subfolder=subfolder)
-            elif i == 0 and start_and_end_blank:
-                anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False,
-                        end_roll=False, output_name = output_path, start_from_blank=True, end_with_blank=False, recolour=colour, continue_with_list=True, subfolder=subfolder)
             elif i < len(incoming_list) -1:
                 anim_frames = transition_to_from(anim_frames, outgoing_char=key, incoming_char=incoming_list[i+1], start_roll=False, blank_before_incoming=False,
                         end_roll=False, output_name = output_path, start_from_blank=False, end_with_blank=False, recolour=colour, continue_with_list=True, subfolder=subfolder)
 
     farkle_list = ["blank", "f", "a", "r", "k", "l", "e"]#, "blank"] # no blank on the end so it stays on the e? Not sure what I want.
-    bust_list = ["blank", "dash", "b", "u", "s", "t", "dash"]#, "blank"]
+    bust_list = ["blank", "d", "b", "u", "s", "t", "d"]#, "blank"]
     if make_farkle:
         make_from_list(farkle_list, output_path = "farkle_all_in_one", colour="farkle")
     if make_bust:
         make_from_list(bust_list, output_path = "bust_all_in_one", colour="bust")
     if make_other:
-        make_from_list(make_other, output_path = make_other, colour=make_other_colour, subfolder = other_subfolder, end_blank=False) # is_other=True to add blank to start
+        make_from_list(make_other, output_path = filename, colour=make_other_colour, subfolder = other_subfolder, end_blank=False) # is_other=True to add blank to start
 """
 make number > bust
 """
@@ -490,9 +490,6 @@ THE FOLLOWING SETUP DOES WORK.
                 #window[letter].update_animation(chain[letter],  time_between_frames=20)
                 window[letter].update(data=data_dict[letter][do_index])
 
-
-
-
     window.close()
 
 def make_all_die_combinations():
@@ -521,7 +518,7 @@ def make_all_die_combinations():
             output_name = f"{char}_to_blank", incoming_colour="None", start_from_blank=False, end_with_blank=False, recolour=fark_colours[char],
                 continue_with_list=False, subfolder="BASE\\farkle")
 
-    for char in ("dash", "b", "u", "s", "t"):
+    for char in ("d", "b", "u", "s", "t"):
         ### do a full roll. Not the blanks. Let me do the blank in combination with player colours instead. Just do the bust colours.
         transition_to_from([], char, char, start_roll=False, blank_before_incoming=False, end_roll=True, output_name = f"full_roll_{char}", start_from_blank=False, end_with_blank=False, recolour=bust_colour, continue_with_list=False, subfolder=f"BASE\\self_roll")
         transition_to_from([], "blank", char, start_roll=False, blank_before_incoming=False, end_roll=False,
@@ -590,11 +587,15 @@ def held_and_used():
                 #new_image.show()
 
 
+def make_single_frames():
+    """For making a frame[0] version of each char. Currently I still only have them as blanks"""
+
 if "__main__" == __name__:
 
     import time
     start_time = time.time()
 
+    make_single_frames()
     #colour_players_dice(player_colour="#78A73A", force_recolour=True)
     #held_and_used()
     end_time = time.time()
@@ -603,7 +604,7 @@ if "__main__" == __name__:
 
     #make_combination_image(make_farkle=False, make_bust=False, make_other="41b5162342", make_other_colour="#5E129C", other_subfolder="testing")#True)
     #make_player_dice("#11D49A")
-    do_window()
+    #do_window()
     #make_all_die_combinations()
     #compile_die()
 

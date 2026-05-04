@@ -6,7 +6,7 @@ started April 2026 //  [gui version] v 1.5 // harpoonlobotomy"""
 
 # have commented out to_json throughout, add it back later.
 from time import sleep
-import random
+import random, os
 import FreeSimpleGUI as sg
 from PIL import Image, ImageSequence, ImageTk
 
@@ -38,12 +38,12 @@ farkle_to_no = {
 }
 
 no_to_bust = {
-    "die_1": "dash",
+    "die_1": "d", ## d for 'dash' so make_other works properly
     "die_2": "b",
     "die_3": "u",
     "die_4": "s",
     "die_5": "t",
-    "die_6": "dash"
+    "die_6": "d"
 }
 
 window_is_closed = False
@@ -64,14 +64,7 @@ class settings:
 
         for item in settings.__annotations__: # counted here as long as the type is given, apparently. Can't be the best way to do this but seems to be working so will go with it.
             setattr(settings, item, settings_dict["user_set"][item] if settings_dict["user_set"].get(item) else settings_dict["defaults"][item])
-        #print(f"SETTINGS VARS: {vars(settings)}")
-        """self.player1_name = settings_dict["user_set"]["player1_name"] if settings_dict["user_set"].get("player1_name") else settings_dict["defaults"]["player1_name"]
-        self.player2_name = settings_dict["user_set"]["player2_name"] if settings_dict["user_set"].get("player2_name") else settings_dict["defaults"]["player2_name"]
-        self.playstyle = settings_dict["user_set"]["playstyle"] if settings_dict["user_set"].get("playstyle") else settings_dict["defaults"]["playstyle"]
-        self.is_singleplayer = settings_dict["user_set"]["is_singleplayer"] if settings_dict["user_set"].get("is_singleplayer") else settings_dict["defaults"]["is_singleplayer"]
-        self.computer_think_aloud = settings_dict["user_set"]["computer_think_aloud"] if settings_dict["user_set"].get("computer_think_aloud") else settings_dict["defaults"]["computer_think_aloud"]
-        self.output_file = settings_dict["user_set"]["output_file"] if settings_dict["user_set"].get("output_file") else settings_dict["defaults"]["output_file"]
-"""
+
 
 class theme_data():
 
@@ -191,7 +184,7 @@ button_used = "#666354"
 
 die_bust_col = ('white', "#330303")
 
-dice_dict = {}
+#dice_dict = {}
 
 die_1 = 1
 die_2 = 2
@@ -207,12 +200,12 @@ SYMBOL_UP =    '▲'
 SYMBOL_DOWN =  '▼'
 
 bust_text = {
-    "die_1": "-",
-    "die_2": "B",
-    "die_3": "U",
-    "die_4": "S",
-    "die_5": "T",
-    "die_6": "-",
+    "die_1": "d",
+    "die_2": "b",
+    "die_3": "u",
+    "die_4": "s",
+    "die_5": "t",
+    "die_6": "d",
 }
 
 preroll_text = {
@@ -227,26 +220,7 @@ preroll_text = {
 tally_text_col = None#"#653635"
 
 png_icon = "farkle_icon_48.png"
-#png_icon = "farkle_gui.ico"
 
-
-def make_play_area():
-
-    #print("\033[s", end='')
-    #print("\033[6n", end='') # reports current cursor position
-
-    error_line = "0"
-    error = f"\033[{int(error_line)};1f"
-    start_line = "6" # before this is space for errors
-
-    points = f"\033[{int(start_line)-1};1f\033[2;32m"
-    dice_str = f"\033[{int(start_line) + 3};7f"
-    prompt = f"\033[{int(start_line) + 6};1f"
-    inputstr = f"\033[{int(start_line) + 8};1f"
-    output = f"\033[{int(start_line) + 10};1f"
-
-    global pos
-    pos = pos_data(error, points, dice_str, prompt, inputstr, output)
 
 class print_colours:
 
@@ -414,7 +388,7 @@ class pos_data:
 class dice_gifs:
     """ num_by_colour includes every number to every number, and every other char to blank (and inverse.)"""
     def __init__(self):
-        self.keys = ["blank", "1", "2", "3", "4", "5", "6", "f", "a", "r", "k", "l", "e", "dash", "b", "u", "s", "t"]
+        self.keys = ["blank", "1", "2", "3", "4", "5", "6", "f", "a", "r", "k", "l", "e", "d", "b", "u", "s", "t"]
         self.player_1_path:str = ""
         self.player_1_gifs:dict = {}#{{i:""} for i in keys} # each inner dict is {die_val: filepath} // from_x_to_y is always outgoing>incoming, and always stored on the x.
         self.player_2_path:str = ""
@@ -430,7 +404,6 @@ gif_data = dice_gifs()
 def colour_dice_sets():
     """ Use PIL to colour the dice according to player colours.
     ! The base64 images are the post-coloured ones, not the grey ones."""
-    import os
     for player in (players.player_1, players.player_2):
         player_dice_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{player.skin}\\"
         if not os.path.isdir(player_dice_path) or len(os.listdir(player_dice_path)) < 80: # arbitrarily 80 for now to catch anything obviously lacking.
@@ -456,7 +429,7 @@ def colour_dice_sets():
             if results:
                 gif_data.farkle_gifs[letter] = results[0]
     #print(f"gif_data.farkle_gifs: {gif_data.farkle_gifs}")
-    for letter in ("dash", "b", "u", "s", "t"):
+    for letter in ("d", "b", "u", "s", "t"):
         if full_roll_paths:
             results = list(f"{self_roll_dir}{i}" for i in full_roll_paths if f"roll_{letter}" in i)
             gif_data.bust_gifs[letter] = results # might not keep these separate for long. Feels a little silly.
@@ -527,11 +500,12 @@ def colour_dice_sets():
 
 class die:
     def __init__(self, place_number = 1, skin=None):
-        self.value = 1
+        self.value = 9
         self.place_no = place_number
         self.held = False
         self.used = False
         self.skin = skin
+        self.held_previously = False
 
     def __repr__(self):
         return f"<place_no: {self.place_no} / value: {self.value} / used: {self.used} / held: {self.held}>"
@@ -541,54 +515,24 @@ class dice_data:
     def __init__(self):
 
         self.skin = None
-        self.dice:set[die] = set()
+        self.dice:list[die] = list()
         self.by_no:dict[int, die] = {}
         """player_no[die_no] = {'still': bytes, 'anim': bytes}"""
         self.force_dicerolls = False
+        self.showing_farkle = False
 
     def init_dice(self):
 
         for i in range(1, 7):
             die_inst = die(place_number=i, skin=self.skin)
-            self.dice.add(die_inst)
+            self.dice.append(die_inst)
             self.by_no[i] = die_inst
 
-        #colour_dice_sets(self)
-        #self.by_no = {die.place_no: die for die in self.dice}
-
-    def print_updated(self, die = None, skin = None):
-
-        def print_die(die, skin):
-            if isinstance(die, int):
-                die = self.by_no[die]
-            if isinstance(die, str):
-                die = self.by_no[int(die)]
-
-            if skin:
-                die_skin = colours[skin] if colours.get(skin) else skin
-            else:
-                die_skin = die.skin if die.skin else colours.get("red") # should allow for per-die skin, as well as default skin (which can be set by dice set on init or by player)
-                if die.held:
-                    die_skin = colours.get(print_colour.held_dice) # green for held dice
-                    if "[1m" in die_skin:
-                        die_skin = die_skin.replace("[1m", "[")
-                    #die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
-                elif die.used:
-                    die_skin = colours.get(print_colour.used_dice)
-                    if "[1m" in die_skin:
-                        die_skin = die_skin.replace("[1m", "[")
-                    #die_skin = "\033[2m" + die_skin # dim the held dice a bit to make them more visually distinct from unheld dice
-
-            pos.print_dice(text = f"[  {die.value}  ]", die=die, skin=die_skin)
-            sleep(.01)
-
-        if not die:
-            for i in range(1, 7):
-                print_die(i, skin)
-
-        else:
-            print_die(die, skin)
-
+    def get_die_inst(self, key:str|int) -> die:
+        if isinstance(key, str):
+            key = key.replace("die_", "")
+        die_inst = self.by_no[int(key)]
+        return die_inst
 
     def hold(self, die_inst): # selecting by place_no; if there was a graphic, they would scatter to roll then scoot back to their positions.
 
@@ -597,7 +541,6 @@ class dice_data:
         else:
             die_inst.held = True
 
-        self.print_updated()
         return die_inst
 
 dice = dice_data()
@@ -624,7 +567,6 @@ colours = {
 
 export_data = False
 
-
 class outputter:
 
     def __init__(self):
@@ -639,7 +581,6 @@ class outputter:
             file = settings.output_file
 
         elif file_selection == "settings":
-            import os
             file = rf"{os.getcwd()}\farkle_settings.json"
         return file
 
@@ -734,6 +675,25 @@ class outputter:
 
 to_json = outputter()
 
+def remove_player_colour_gifs(keep_current=True):
+    """ Currently only accessed via restore_defaults; should make it an option on its own. """
+
+    import shutil
+
+    if keep_current:
+        to_keep = (players.player_1.skin, players.player_2.skin)
+    else:
+        to_keep = None
+
+    directory = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\"
+    folders = os.listdir(directory)
+    print(f"folders: {folders}")
+    for folder in folders:
+        if to_keep and folder in to_keep:
+            continue
+        print(f"Folder to remove: {directory}{folder}")
+        shutil.rmtree(directory + folder)
+
 def restore_defaults():
 
     settings_dict = to_json.load_json("settings")
@@ -751,13 +711,8 @@ def restore_defaults():
 
     to_json.output_to_file(settings_dict, "settings")
 
-    #print(f"SETTINGS VARS: {vars(settings)}")
-    """self.player1_name = settings_dict["defaults"]["player1_name"]
-    self.player2_name = settings_dict["defaults"]["player2_name"]
-    self.playstyle = settings_dict["defaults"]["playstyle"]
-    self.is_singleplayer = settings_dict["defaults"]["is_singleplayer"]
-    self.computer_think_aloud = settings_dict["defaults"]["computer_think_aloud"]
-    self.output_file = settings_dict["defaults"]["output_file"]"""
+    remove_player_colour_gifs()
+
 
 class playerInst:
 
@@ -975,28 +930,16 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
 
 def clear_held_and_used_dice():
 
-    for die in dice.dice:
-        die.value = str(die.place_no)
-        die.used = False
-        die.held = False
+    for d in dice.dice:
+        d.value = 9
+        d.used = False
+        d.held = False
+        d.held_previously = False
 
 def update_tally():
 
     players.tally[players.total_turns] = (players.current.name, players.current.game_score)
-    """count = int(pos.tally)
-    column = 4
 
-    for i, entry in players.tally.items():
-        name, score = entry
-        if count == pos.tally_orig:
-            count = int(pos.tally)
-            column = column + 32
-            if column +30 >= pos.columns:
-                column = 4
-        print(f"\033[{count};{column}f\033[2;32mTurn {i}: {name} = {score}")
-        count = count + 1"""
-        #pos.print_error(f"printed tally for {players.current.name} at count {count}, column {column}", 2)
-    #print(END, end='')
 
 def held_die_now_used_die(die_inst:die):
     die_inst.used = True
@@ -1031,26 +974,6 @@ f"First player to {points_to_win} points wins! And whoever lost goes first next 
 
 
 def collapse(layout, key, visible=False):
-    """
-    Helper function that creates a Column that can be later made hidden, thus appearing "collapsed"
-    :param layout: The layout for the section
-    :param key: Key used to make this seciton visible / invisible
-    :return: A pinned column that can be placed directly into your layout
-    :rtype: sg.pin
-    """
-    """key_inner = key + "_inner"
-    if visible:
-        collapsable = [
-        [sg.VStretch()],
-        [sg.Column(layout, key=key_inner, visible=visible, element_justification="center", vertical_alignment="center")],
-        [sg.VStretch()]
-        ]
-    else:
-        collapsable =[
-            [sg.Column(layout, key=key, visible=visible, element_justification="center", vertical_alignment="center")]]
-    return sg.pin(sg.Column(layout=collapsable), vertical_alignment="center")
-    """
-
     return sg.pin(sg.Column(layout, key=key, visible=visible, element_justification="center", vertical_alignment="center", expand_y=True))
 
 def add_dots(dot_size=std_dot_size):
@@ -1067,16 +990,16 @@ def make_horz_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
 
 def make_window():
 
-    def image_to_data(im, i):
+    """def image_to_data(im, i):
         from io import BytesIO
         with BytesIO() as output:
             im.save(output, format=f"PNG", index = i)
             data = output.getvalue()
-        return data
+        return data"""
 
     def run_gif_anim(gif_filepath, die_key):
 
-        sg.Text.char_width_in_pixels(("Courier New", 11))
+        #sg.Text.char_width_in_pixels(("Courier New", 11))
 
         image = Image.open(gif_filepath)
         frames = image.n_frames
@@ -1093,13 +1016,18 @@ def make_window():
 
     def play_farkle_intro():
 
+        if dice.showing_farkle:
+            print("Already showing farkle.")
+            return
+
+        print("Showing farkle animation")
         for i, char in enumerate(("f", "a", "r", "k", "l", "e")):
-            chain_gif = gif_data.farkle_gifs[char]
-            image = Image.open(chain_gif)
+            gif_file = gif_data.farkle_gifs[char]
+            image = Image.open(gif_file)
             frames = image.n_frames
-            accumImage = sg.tk.PhotoImage(file=chain_gif, format=f'gif -index 0')
+            accumImage = sg.tk.PhotoImage(file=gif_file, format=f'gif -index 0')
             for i in range(0, frames):
-                deltaImage = sg.tk.PhotoImage(file=chain_gif, format=f'gif -index {i}')
+                deltaImage = sg.tk.PhotoImage(file=gif_file, format=f'gif -index {i}')
                 accumImage.tk.call(accumImage, 'copy', deltaImage)
                 window[farkle_to_no[char]].update(data=accumImage)
                 sleep(.03)
@@ -1126,56 +1054,115 @@ def make_window():
         }
 
 
-    def roll_animated_die(die_key="die_1", die_inst=None, farkle=False):
+    def roll_animated_die(die_inst=None, farkle=False, bust=False, used=False, farkle_from_bust=False, farkle_from_current=False, from_held=False, from_used=False):
 
-        """the idea for this is to have it roll through random numbers and end on the rolled value. So, I have all the graphics for each number, and it scrolls through each before landing on the final one. Instead of roll+update+roll+rupdate etc, we get a random 3-4 vals, and show the first scrolling and land on the last. Repeat for each die rolled.
-        Instead of running this function once for each die though, we have each stage play for each die, plus an offset per dice rolled (so each starts and ends at a slightly different time.)"""
-
-        #if dice.raw_graphics.get(no_to_farkle[die_key]):
-        #print(f"dice.raw_graphics: die_key: {die_key}")
-        die_no = die_key.replace("die_", "")
-        #print(dice.raw_graphics[die_no].keys())
         import os
         if farkle:
+            print("Rolling farkle")
             play_farkle_intro()
             return
-            #for die in no_to_farkle:
-                #run_gif_anim(f"{os.getcwd()}\\dice_graphics\\BASE\\self_roll\\full_roll_{no_to_farkle[die]}", die_key)
-            #exit()
-        random_selection = random.choices(range(1,7), k=3)
-        #print(f"random selection: {random_selection}")
-        from make_dice_images import make_combination_image
-        dice_rolled = list(str(i) for i in random_selection)
-        if not die_inst:
-            die_inst = dice.by_no[int(die_key.replace("die_", ""))]
-        die_inst.value = int(dice_rolled[-1])
-        print(f"die inst value: {die_inst} // {die_inst.value}")
-        dice_rolled.insert(0, str(die_inst.value))
-        dice_rolled = "".join(dice_rolled)
-        make_combination_image(make_farkle = False, make_bust=False, make_other=dice_rolled, make_other_colour = players.current.skin, other_subfolder="random_rolls\\", end_blank=False)
-        target_dir = f"{os.getcwd()}\\dice_graphics\\random_rolls\\"
-        target_file = target_dir + dice_rolled + ".gif"
-        print(f"TARGET FILE: {target_file}")
 
-        if len(die_key) == 1:
-            die_key = "die_" + str(die_key)
-        print(f"\nGIF: {target_file}\n")
-        run_gif_anim(target_file, die_key)
+        make_other = []
+
+        if isinstance(die_inst, str):
+            die_inst = dice.get_die_inst(die_inst)
+
+        from make_dice_images import make_combination_image, transition_to_from, button_held, button_used
+
+        if die_inst.held:
+                other_colour = button_held
+        elif die_inst.used:
+            other_colour = button_used
+        else:
+            other_colour = players.current.skin
+
+        if farkle_from_bust or farkle_from_current:
+            if farkle_from_bust:
+                print("Farkle from bust updating")
+                char = bust_text[f"die_{die_inst.place_no}"]
+            else:
+                print("FARKLE FROM CURRENT UPDATING")
+                char = str(die_inst.value)
+            make_other.append(str(char))
+            f_char = str(no_to_farkle[f"die_{die_inst.place_no}"])
+            make_other.append(f_char)
+            make_other = "".join(make_other)
+            anim_frames = transition_to_from([], outgoing_char=str(char), outgoing_colour=other_colour, incoming_char=f_char, incoming_colour=other_colour, start_roll=False, blank_before_incoming=False,
+                        end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, subfolder="random_rolls\\", continue_with_list=True) # runn twice to have it repeat the farkle roll
+            transition_to_from(anim_frames, outgoing_char=f_char, outgoing_colour=other_colour, incoming_char=f_char, incoming_colour=other_colour, start_roll=False, blank_before_incoming=False,
+                        end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, continue_with_list=False, subfolder="random_rolls\\")
+            dice.showing_farkle=True
+            print(f"make_other after farkle from bust/updating: {make_other}")
+            #make_combination_image(make_other=make_other, make_other_colour = other_colour, other_subfolder="random_rolls\\", end_blank=False)
+
+        elif bust:
+            bust_char = bust_text[f"die_{die_inst.place_no}"]
+            make_other.append(str(die_inst.value))
+            make_other.append(bust_char)
+            make_other = "".join(make_other)
+
+            # NOTE: I'm not just recolouring val_to_blank + blank_to_bust here, but making 'val_to_bust' directly. v inefficient. Revisit this.
+            make_combination_image(make_other=make_other, make_other_colour = other_colour, other_subfolder="random_rolls\\", end_blank=False)
+            print(f"make_other after bust: {make_other}")
+
+        elif used or from_held or from_used:
+
+            make_other.append(str(die_inst.value))
+            make_other.append(str(die_inst.value))
+            make_other = "".join(make_other)
+            if from_held:
+                print(f"FROM HELD: {from_held} // {die_inst}")
+                transition_to_from([], outgoing_char=str(die_inst.value), outgoing_colour=button_held, incoming_char=str(die_inst.value), incoming_colour=players.current.skin, start_roll=False, blank_before_incoming=False,
+                        end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, continue_with_list=False, subfolder="random_rolls\\")
+                die_inst.held=False
+            elif from_used:
+                print(f"FROM USED: {from_used} // {die_inst}")
+                transition_to_from([], outgoing_char=str(die_inst.value), outgoing_colour=button_used, incoming_char=str(die_inst.value), incoming_colour=players.current.skin, start_roll=False, blank_before_incoming=False,
+                        end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, continue_with_list=False, subfolder="random_rolls\\")
+                die_inst.used = False
+            else:
+                print(f"USED: {used} // {die_inst}")
+                transition_to_from([], outgoing_char=str(die_inst.value), outgoing_colour=button_held, incoming_char=str(die_inst.value), incoming_colour=button_used, start_roll=False, blank_before_incoming=False,
+                        end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, continue_with_list=False, subfolder="random_rolls\\")
+            print(f"make_other after farkle from used/from_held/from_used: {make_other}")
+
+        else:
+            random_selection = random.choices(range(1,7), k=3)
+            make_other = list(str(i) for i in random_selection)
+
+            original_val = str(die_inst.value)
+            if original_val == "9":
+                make_other.insert(0, str(no_to_farkle[f"die_{die_inst.place_no}"]))
+            else:
+                make_other.insert(0, str(die_inst.value))
+            die_inst.value = int(make_other[-1])
+
+            make_other = "".join(make_other)
+            make_combination_image(make_farkle = False, make_bust=False, make_other=make_other, make_other_colour = players.current.skin, other_subfolder="random_rolls\\", end_blank=False)
+            dice.showing_farkle=False
+            print(f"make_other after rolling dice: {make_other}")
+
+        if make_other:
+            target_dir = f"{os.getcwd()}\\dice_graphics\\random_rolls\\"
+            target_file = target_dir + "temp.gif"
+            #print(f"TARGET FILE: {target_file}")
+            run_gif_anim(target_file, f"die_{die_inst.place_no}")
+
 
     def colour_dice(die_inst=None, preroll = False, do_refresh=False, bust=False, only_held=False):
+
+        return # just testing to see if this still does anything meaningful
 
         def _do_colour(die_inst, do_refresh=False, bust=False):
 
             dice_place = "die_" + str(die_inst.place_no)
 
             if bust:
-                #window[dice_place].update(bust_text[dice_place])
                 window[dice_place].update(gif_data.bust_gifs[no_to_bust[dice_place]][0])
 
             else:
                 if preroll:
                     die_here:sg.Image = window[dice_place]
-                    #run_gif_anim(gif_filepath = gif_data.farkle_gifs[no_to_farkle[dice_place]][0], die_key=dice_place)
                     die_here.update(filename = gif_data.farkle_gifs[no_to_farkle[dice_place]])
 
                 else:
@@ -1188,6 +1175,7 @@ def make_window():
                         window[dice_place].update(filename=gif_data.used_still[str(die_inst.value)])
                         #window[dice_place].update(button_color=button_used)
                     elif not only_held:
+                        print(f"setting die, not only held: {dice_place}")
                         #window[dice_place].update(image_filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
                         window[dice_place].update(filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
 
@@ -1197,7 +1185,7 @@ def make_window():
 
         if not die_inst:
             for no in range(1,7):
-                _do_colour(dice_dict[f"die_{no}"], do_refresh, bust)
+                _do_colour(dice.get_die_inst(no), do_refresh, bust)
 
             #for i in dice.dice:
                 #_do_colour(i, do_refresh, bust)
@@ -1206,70 +1194,39 @@ def make_window():
 
     def hold_dice(die_inst):
 
-        #dice_place_no = dice_place.replace("die_", '')
-        #dice_place_no = int(dice_place_no)
         dice.hold(die_inst)
-        colour_dice(die_inst, do_refresh=False)
+        if die_inst.held:
+            window[f"die_{die_inst.place_no}"].update(filename=gif_data.held_still[str(die_inst.value)])
+        else:
+            window[f"die_{die_inst.place_no}"].update(filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
+        #CHANGEME: this should be the specific char png img, not a gif.
 
-    def get_die_inst(key):
-        key = key.replace("die_", "")
-        inst = dice.by_no[int(key)]
-        return inst
+    def roll_dice(used_dice=None, do_refresh=False, reroll_all=False) -> None:
+        print_points_line(string_print="Rolling...")
 
-
-    def update_die_val_and_colour(new_value, die_inst, do_refresh=True, die_place=None):
-
-        die_inst.value = new_value
-        if not die_place:
-            die_place = "die_" + str(die_inst.place_no)
-        try:
-            window[die_place].__setattr__("metadata", str(die_inst.value))
-            #window[die_place].update(die_inst.value) >- cannot do this as it now tries to update the image data.
-            colour_dice(die_inst, do_refresh=do_refresh)
-            sleep(die_refresh_val)
-        except:
-            print()
-
-    def roll_single(die_place_no, die_inst, do_refresh=False):
-
-        if die_inst.held or die_inst.used:
-            sleep(.05)
-            return
-
-        forced_rolls = {
-            #1: [1, 1, 1, 1, 1, 1],
-            #1: [1, 1, 1, 2, 3, 2]
-            0: [1, 2, 3, 4, 5, 6],
-            1: [1, 2, 2, 3, 3, 4]
-        }
+        if reroll_all:
+            for die_inst in dice.dice:
+                if die_inst.used or die_inst.held:
+                    if die_inst.held:
+                        print(f"Die is held: {die_inst}")
+                        roll_animated_die(die_inst, from_held=True)
+                        die_inst.held = False
+                    else:
+                        print(f"Die is held: {die_inst}")
+                        roll_animated_die(die_inst, from_used=True)
+                        die_inst.used = False
+                die_inst.held_previously = False
+            dice.showing_farkle=False
 
 
-        if dice.force_dicerolls and forced_rolls.get(players.total_turns):
-            for idx, new_value in enumerate(forced_rolls[players.total_turns]):
-                if die_inst.place_no == idx+1:
-                    update_die_val_and_colour(new_value, die_inst, do_refresh=do_refresh)
-                    if idx == 5:
-                        dice.force_dicerolls = False
-                    return
-
-        update_die_val_and_colour(random.randrange(1,7), die_inst, do_refresh=True, die_place=die_place_no)
-
-    def roll_dice(used_dice=None, do_refresh=False) -> None:
-
-
-        for i, die_inst in dice_dict.items():
-            if die_inst.used:
+        for die_inst in dice.dice:
+            if die_inst.used and not reroll_all:
                 continue
-            if used_dice and die_inst in used_dice:
+            if used_dice and die_inst in used_dice and not reroll_all:
                 continue
             else:
-                #if i == "die_1":
-                    #roll_animated_die(i, die_inst)
-                roll_animated_die(i, die_inst)
-                #else:
-                #    print("\nroll_single\n")
-                #    roll_single(i, die_inst, do_refresh=do_refresh)
-                #dice.print_updated(die_inst)
+                roll_animated_die(die_inst)
+
         print("\nend of roll_dice\n")
 
     def make_button(width:float=std_btn, height:float=std_btn, key_str:str="Pause", tooltip_str = ''):
@@ -1280,36 +1237,15 @@ def make_window():
 
     def make_die(key_str:str="1"):
 
-        if "1" in str(key_str):
-            text=''
-        else:
-            text = preroll_text[key_str]
-        val = int(key_str.replace("die_", ""))
         colour = preroll_cols[key_str]
-        #key_upper = str(key_str).upper()
-        key_str = key_str#str("die_" + key_upper)
-        #sg.Button("Hello", , use_ttk_buttons=True)
-        #image_data = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````\x00\x00\x00\x05\x00\x01\xa5\xf6E@\x00\x00\x00\x00IEND\xaeB`\x82'
-        #print(f"key_str: {key_str}")
-        #print(f"dice.raw_graphics: {dice.raw_graphics}")
-        #if key_str == "die_1":
-            #button = sg.Image(data=dice.raw_graphics[key_str]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
-        #button = sg.Image(data=dice.raw_graphics[no_to_farkle[key_str]]["still"], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
-        button = sg.Image(filename=gif_data.farkle_gifs[no_to_farkle[key_str]], size=(100,100), enable_events=True, key=key_str, metadata=val, background_color=colour[1])
-        #button = sg.Button(use_ttk_buttons=True, image_filename=gif_data.farkle_gifs[no_to_farkle[key_str]][0], enable_events=True, key=key_str, right_click_menu=['UNUSED', ['Exit']], pad=0, image_size=(50,50))
-            #button = sg.Graph(canvas_size=(50,50), graph_bottom_left=(0,50), graph_top_right=(50,0), enable_events=True, key=key_str)
-            #button = sg.Button(use_ttk_buttons=True, image_data=gifs[0], enable_events=True, key=key_str, right_click_menu=['UNUSED', ['Exit']], pad=0, image_size=(50,50))
-        #else:
-            #button = sg.Button(button_text=text, button_color=colour, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
-            #button = sg.Button(button_text=text, image_data=img, button_color=colour, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
-        #button = sg.Button(button_text=text, button_color=colour, key=key_str, mouseover_colors=button_mouseover, use_ttk_buttons=False, border_width=5, size=(5,2), font=(f"courier 30 bold"), metadata=val)
+        key_str = key_str
 
+        button = sg.Image(filename=gif_data.farkle_gifs[no_to_farkle[key_str]], size=(100,100), enable_events=True, key=key_str, background_color=colour[1])
+        #CHANGEME: Set this to the blank farkle colour image, then roll into the character gif.
 
-        dice_dict[key_str] = get_die_inst(key_str)
         return button
 
     def mid_gap():
-        #mid_dots = [[add_dots(std_dot_size)], [add_dots(std_dot_size)]]
         return [[sg.Canvas(size=(12,14))]]
 
 
@@ -1334,6 +1270,7 @@ def make_window():
 
             while True:
                 if event == "-NEW_GAME_YES-":
+                    dice.showing_farkle=False
                     new_game_window.close()
                     return True
                 elif event == "-NEW_GAME_NO-":
@@ -1361,6 +1298,8 @@ def make_window():
     def reset_for_new_turn():
         """Returns "end_game" if not starting a new game, "new_game" if starting a new game."""
         update_tally()
+        for d in dice.dice:
+            d.held_previously = False
         tally_entries, tally_entries_second = update_tally_entries()
         window["tally_table_P1"].update(tally_entries)
         if tally_entries_second:
@@ -1369,6 +1308,10 @@ def make_window():
         print_points_line('')
         print_output_text(f"{players.current.name} ends their turn with {players.current.turn_score} points, for a total score of {players.current.game_score} points.")
         #print_output_text(f"{print_colour.playernm(players.current, "output")} ends their turn with a score of [[{players.current.game_score}]].")
+
+        if not dice.showing_farkle:
+            for die_inst in dice.dice:
+                roll_animated_die(die_inst, farkle_from_current=True)
 
         players.current.turn_score = 0
 
@@ -1383,7 +1326,7 @@ def make_window():
 
         clear_held_and_used_dice()
 
-        colour_dice(preroll=True, do_refresh=True)
+        # CHANGEME: needs to roll from current value to farkle image.
         window["print_player_stats"].update(players.scoreline())#f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
         to_json.start_game() # do this here so the first turn is always included regardless of PC or human player starting. Could get messy otherwise.
 
@@ -1422,7 +1365,7 @@ def make_window():
         if get_turnscore:
             score, _, _ = get_score(players.current, set(i for i in dice.dice if i.held), print_result=True, get_score=True)
         take_roll(players.current)
-        outcome = reset_for_new_turn()
+        outcome = reset_for_new_turn() # in take_score_and_end_turn
         return outcome
 
 
@@ -1457,23 +1400,29 @@ def make_window():
             if not has_potential: # should not get here, as it should get caught by start_turn
                 return "bust", None
 
-            for _, inst in dice_dict.items():
-                if inst in used_dice:
-                    inst.held = True
+            for die_inst in dice.dice:
+                if die_inst in used_dice:
+                    die_inst.held = True
                     print_output_text(text=output_text)
-                    colour_dice(inst, do_refresh=True)
+                    if die_inst.held and not die_inst.held_previously:
+                        window[f"die_{die_inst.place_no}"].update(filename=gif_data.held_still[str(die_inst.value)])
+                        window.refresh()
+                    #colour_dice(inst, do_refresh=True)
                     sleep(.3)
                 print_points_line(has_potential)
                 window.refresh()
 
 
             score, used_dice, output_text = get_score(player, used_dice)
-            for _, inst in dice_dict.items():
-                if inst in used_dice:
+            for die_inst in dice.dice:
+                if die_inst in used_dice:
                     print_output_text(text=output_text)
-                    held_die_now_used_die(die_inst=inst)
-                    colour_dice(inst, do_refresh=True)
-                    sleep(.3)
+                    held_die_now_used_die(die_inst=die_inst)
+                    window[f"die_{die_inst.place_no}"].update(filename=gif_data.used_still[str(die_inst.value)])
+                    die_inst.used_previously=False
+                    window.refresh()
+                    #colour_dice(inst, do_refresh=True)
+                    sleep(.15)
 
             print_points_line(score)
             window.refresh()
@@ -1494,12 +1443,13 @@ def make_window():
                             used_dice.add(i)
 
             mark_used(used_dice)
-            for _, inst in dice_dict.items():
-                if inst in used_dice:
+            for die_inst in dice.dice:
+                if die_inst in used_dice:
                     print_output_text(text=output_text)
-                    colour_dice(inst, do_refresh=True)
+                    window[f"die_{die_inst.place_no}"].update(filename=gif_data.used_still[str(die_inst.value)])
+                    die_inst.held_previously=False
                     window.refresh()
-                    sleep(.3)
+                    sleep(.15)
 
             used_dice_count = sum(1 for d in dice.dice if d.used)
 
@@ -1509,9 +1459,11 @@ def make_window():
                     window.refresh()
                     return "end_turn", None
 
+                #roll_dice(reroll_all=True)
                 print_output_text(f"{players.current.name} used all their dice; rerolling all.")
+                for die_inst in dice.dice:
+                    roll_animated_die(die_inst, from_used=True)
                 clear_held_and_used_dice()
-
             else:
                 if (used_dice_count < 4 and (player.game_score + player.turn_score < points_to_win)) or player.turn_score < points_to_win/8:
                     window["output_line"].update("Rolling again.")
@@ -1582,6 +1534,21 @@ def make_window():
         if event == sg.WIN_CLOSED or event == '-EXIT-' or event == "__TITLEBAR CLOSE__":
             return "exit"
 
+    def roll_to_bust():
+
+        print_points_line(bust=True)
+        for d in dice.dice:
+            roll_animated_die(d, bust=True)
+        sleep(.2)
+        for d in dice.dice:
+            roll_animated_die(d, farkle_from_bust=True)
+
+    def roll_to_used():
+        for d in dice.dice:
+            if d.used and not d.held_previously:
+                roll_animated_die(d, used=True)
+                d.held_previously = True
+
 
     dice_display = [[make_die("die_1"),
                     sg.Column(layout=mid_gap()),
@@ -1607,7 +1574,6 @@ def make_window():
                      sg.Column(key="dice_layout", layout=dice_display, justification="c", vertical_alignment="center"),
                      sg.Column(layout=make_vert_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), vertical_alignment="center")]]
 
-    text_width = len("points from this roll: 1111 / Banked score: 1111")
     point_output = [
                     [sg.Stretch(), sg.HSeparator(color=gold), sg.Stretch()],
                     [sg.Canvas(size=(widest_measure,2), pad=2)],
@@ -1665,14 +1631,12 @@ def make_window():
 
         event, values = window.read(timeout=500)
 
-        if event == sg.WIN_CLOSED or event == '-EXIT-' or event == "__TITLEBAR CLOSE__":
+        if check_for_close_event(event):
 
             if not window.is_closed():
                 clear_prints()
-            return "exit", None
 
-        #if not window.is_closed(quick_check=False):
-            #colour_dice(preroll=True if not round_started else False, do_refresh=False if round_started else True) < needed? Not sure.
+            return "exit", None
 
         used_dice = None
         if players.is_singleplayer and players.current == players.player_2:
@@ -1694,17 +1658,18 @@ def make_window():
                         #break
 
                 elif outcome == "bust":
-                    print_points_line(bust=True)
+                    roll_to_bust()
+
                     if check_for_close_event(autoplay_loop_event):
                         return "exit", None
-                    colour_dice(do_refresh=True, bust=True)
+                    #colour_dice(do_refresh=True, bust=True)
                     window.refresh()
                     sleep(.5)
                     #colour_buttons(do_refresh=True, bust=True)
                     players.current.turn_score = 0
                     if check_for_close_event(autoplay_loop_event): # added a number of these so it has different opportunities to notice and exit to limit the user wait after clicking close.
                         return "exit", None
-                    reset_for_new_turn()
+                    reset_for_new_turn() # ln 1664 if player2 busts
                     round_started = False
                 elif outcome == "game_won":
                     round_over(players.current)
@@ -1712,14 +1677,14 @@ def make_window():
         if not round_started:
 
             autoplay_loop_event, values = window.read(timeout=100)
-            play_farkle_intro()#roll_animated_die(farkle=True)
-            #roll_animated_die()
+
+            roll_animated_die(farkle=True)
             clear_held_and_used_dice()
             print_output_text(text=f"{players.current.name} is starting their turn.")
             sleep(.2)
             if check_for_close_event(autoplay_loop_event):
                 return "exit", None
-            print_points_line(string_print='', print_banked=True)
+            print_points_line(string_print='', print_banked=False)
             roll_dice(do_refresh=True)
             to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True)
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
@@ -1727,11 +1692,12 @@ def make_window():
             print_output_text(text=output_str)
             if not used_dice:
                 print_points_line(bust=True)
-                colour_dice(do_refresh=True, bust=True)
+                roll_to_bust()
+                #colour_dice(do_refresh=True, bust=True)
                 if check_for_close_event(autoplay_loop_event):
-                    return "exit"
+                    return "exit", None
                 sleep(.8)
-                reset_for_new_turn()
+                reset_for_new_turn() #line 1692 if bust out the gate
                 round_started = False
 
         if event and event.startswith('-OPEN SEC1-'):
@@ -1742,12 +1708,10 @@ def make_window():
         if "die_" in event and round_started:
             print(f"DIE IN EVENT: {event}")
             clear_prints(print_banked=True)
-            die_inst = get_die_inst(event)
+            die_inst = dice.get_die_inst(event)
             if die_inst.used:
                 continue
-            window[event].__getattribute__("metadata")
-            print(f"HELD DICE: {set(i for i in dice.dice if i.held)}")
-            hold_dice(die_inst)#, value = window[event].__getattribute__("metadata"))
+            hold_dice(die_inst)
             score, _, output_str = get_score(players.current, set(i for i in dice.dice if i.held), print_result=False, get_score=False, test_only=True)
             print_output_text(text=output_str)
             print_points_line(score, print_banked=True)
@@ -1766,32 +1730,35 @@ def make_window():
                 for i in dice.dice:
                     if i.held:
                         i.held=False
-                colour_dice(do_refresh=True, only_held=True)
+                roll_to_used()
+                #colour_dice(do_refresh=True, only_held=True)
                 if check_for_close_event(event):
-                    return "exit"
+                    return "exit", None
                 used_dice = set(i for i in dice.dice if i.used)
                 if used_dice and len(used_dice) == 6:
                     print_output_text(f"{players.current.name} used all their dice; rerolling all.")
-                    clear_held_and_used_dice()
+                    #clear_held_and_used_dice()
                     #colour_buttons()
-                    roll_dice(do_refresh=True)
+                    roll_dice(do_refresh=True, reroll_all=True)
                 else:
                     roll_dice(used_dice, do_refresh=True)
                 score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
                 print_output_text(text=output_str)
                 if check_for_close_event(event):
-                    return "exit"
+                    return "exit", None
                 if not used_dice:
+                    roll_to_bust()
                     print_points_line(bust=True)
-                    colour_dice(do_refresh=True, bust=True)
+                    #colour_dice(do_refresh=True, bust=True)
                     sleep(.8)
-                    reset_for_new_turn()
+                    reset_for_new_turn() # line 1746 if player busts
                     round_started = False
                 else:
                     players.current.turn_score += preroll_score
                 clear_prints(print_banked=True)
 
         if event == "-TAKE-":
+            print("Pressed 'take'")
             if not players.current.turn_score and not (dice.dice and any(i.held for i in dice.dice)): # ""any(i.held for i in dice.dice)"" oh so that's a use for any. Good.
                 print_output_text("You can't take nothing if there are valid scoring dice.")
                 continue
@@ -1807,13 +1774,6 @@ def make_window():
 
         if event == "-RULES-":
             rules_window()
-
-    #TODO
-    """if window.get_screen_dimensions() and window.get_screen_dimensions() != (None, None):   #fullscreen version"""
-
-    if not window.is_closed():
-        window.close()
-    return "exit", None
 
 
 def settings_window():
@@ -2160,11 +2120,11 @@ def apply_settings(settings_dict):
                         if player_num == "1":
                             if players.player_1.skin != colour:
                                 players.player_1.skin = colour
-                                update_json_dict["player1_col"] = data[name]
+                                update_json_dict["player1_col"] = colour
                         elif player_num == "2":
                             if players.player_2.skin != colour:
                                 players.player_2.skin = colour
-                                update_json_dict["player2_col"] = data[name]
+                                update_json_dict["player2_col"] = colour
 
         if action == "set_theme":
             if data != sg.theme():
@@ -2182,13 +2142,22 @@ def apply_settings(settings_dict):
     if update_json_dict:
         update_json(update_json_dict)
 
+def remove_random_rolls_on_close():
+
+    random_rolls = f"{os.getcwd()}\\dice_graphics\\random_rolls\\"
+    filecount = len(os.listdir(random_rolls))
+    print(f"Removing random roll gifs from `{random_rolls}`")
+    for file in os.listdir(random_rolls):
+        if not ".gif" in file:
+            continue
+        filepath = random_rolls + file
+        os.remove(filepath)
+    print(f"Removed {filecount} random roll gifs. Closing.")
 
 def main_gui():
 
     # Add a waiting window here #
     init_settings()
-
-    make_play_area() # needed for pos initialisation.
 
     global players
     players = playerClass()
@@ -2213,5 +2182,7 @@ def main_gui():
                 settings_dict = settings_window()
                 if settings_dict and not isinstance(settings_dict, str): # added this in case I forget to remove the no_save line from settings window testing.
                     apply_settings(settings_dict)
+
+    remove_random_rolls_on_close()
 
 main_gui()

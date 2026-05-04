@@ -170,3 +170,75 @@ is a frame too late
 The pause between clicking roll and the roll starting (where it makes the combined gif) isn't too long, but it's present. Going to try just playing those gif segments in sequence instead of combining them.
 
 It is actually playable now, though, with the gifs. Needs a lot of refinement for sure but, it's functioning. Which is nice.
+
+12.52pm 4/5/26
+Okay. So -
+today I need to sort out getting the frame[0] for each char. Which sholdn't be hard to do, I just can't think, my brain is broken today. But can confirm that the default rotation gifs always start on frame 1, not frame 0. This was intentional, because it avoids having the 'good' frame duplicate mid roll, but means that a die at rest needs a different face, not to just start with the gif. Ending with the gif is fine as it ends on the perfect face.
+
+Also:
+Oddly, my 'e to blank' anims start on a blank farkle colour frame. Need to fix that. Oh, and half the other ones - 'blank_to_a' starts on 0, 'blank_to_blank_e' starts on 1. What?
+
+Okay. Yeah, so - nothing uses frame 0 in 'movement' dict in make_dice_images, so the animations should only use 1-11.
+
+
+Also, the start of the random roll should be 'farkle>number', not just start with number.
+
+Need to be able to determine whether it's currently a farkle graphic or not. Thinking of just allocating the value of '9' to farkle graphic dice, because there's never a value 9 die
+
+Marking places I need to alter with `#CHANGEME:`
+
+I make this:
+dice_dict[key_str] = get_die_inst(key_str)
+but there's no reason for it, I can just call get_die_inst and it looks it up mostly the same but slightly more reliably.
+
+Okay, finally fixed it so it starts rolling away from the farkle char first, not just harsh swapping out.
+
+Used die are not being properly converted, their colour remains 'held'.
+
+3.00pm
+Okay, now a bust rolls into a bust neatly.
+
+3.15pm
+Fixed the issue of it not correctly recolouring used dice. Now it quickly rolls them from 'held' to 'used' before rolling the remainder.
+
+next:
+After a bust, roll to farkle before rerolling.
+
+Note: rerolling all 6 dice currently starts with 'farkle', when it should start from current val.
+
+TODO: Add roll speed to settings.
+
+After bust, it should't return to 'banked score 0', it should display 'Starting player_x's turn'.
+
+Also when going to a new turn, again it plays the farkle anim from the f start, not the number start. <-- now works for player 1, but computer player now rolls the farkle intro twice.
+- more detail on this:
+    when busting, it rolls to bust correctly.
+ It seems to be running farkle_from_bust and then farkle_from_current.
+ -- 5.16pm okay so now it just runs updating and then full farkle. So i need to make full farkle contingent on not-already-farkle.
+  -- 5.30pm done.
+
+When rolling to farkle/bust, it uses the player skin whether the die was held or used. Needs to account for die state. <-- DONE
+
+player_2's dice show the wrong value when held. It seems to correct itself when used, but held is wrong. <-- done. Was die_inst instead of inst and using a value from elsewhere.
+
+when pc player rerolls all, still starts from farkle frame.
+
+Oh - 'take' after rerolling all doesn't correctly show the graphics anymore. Oh, found it. Forgot I need to loop the die externally.
+
+player 2 loops all die to 'used' before rerolling all. Unnecessary and visually busy.
+
+??? It just bust and showed all dashes. What?
+
+Oh. Okay, so it goes to bust, but then goes again but makes them all dashes. Why the fuck...
+
+Fixed the above.
+player 2 rerolling all still starts from farkle, though. Don't know how to stop that.
+
+Also rerolling all as p1 makesit go from used > player colour without a transition roll. <-- fixed now.
+
+p2 does not update the rolled dice if it's about to bust, so it often looks like they had usable dice as the dice are still showing from the previous throw.
+
+want to add dice skins. Just a layer over the top to give it some wear, or extra shading, etc. also alt die faces.
+
+6.34pm
+when p2 rerolls, it still rolls from farkle frames. Need to fix that.
