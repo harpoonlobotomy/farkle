@@ -242,3 +242,47 @@ want to add dice skins. Just a layer over the top to give it some wear, or extra
 
 6.34pm
 when p2 rerolls, it still rolls from farkle frames. Need to fix that.
+
+4.56pm 5/5/26
+Need to make a new list of what from the 'list' yesterday still applies.
+ * Intros do not start on the correct frame but on frame+1. Need stills for all chars except bust.
+
+* rerolling all still has weird animations. Need to put the forced die rolls back in for testing. <- fixed
+    - the weirdness specifically: It rolls everything to 'used', then rolls everything to 'usable', then rolls the random die. It should roll to random directly from 'used'.
+
+* starting a new game should roll a fresh farkle animation. So after someone wins and the game starts over, regardless of what die are showing and in what state it should do the full farkle roll. <- done
+
+* button mouseover colour is dark green. Should be something that fits the theme better. Maybe a chestnut for navy and a deep blue for Arcade? <-- done
+
+* clicking 'no' to start a new game after winning makes the window resize in an unpleasant way. <-- fixed, now it just closes.
+
+Have set forced rolls on. Now it's just 1-6 every time.
+
+Select all, they roll to grey, then roll 1-6 again with no transition. Then it rolls /again/, but it busts immediately - now that I can't explain.
+
+Same for player 2?
+No, because they didn't reroll, they just took the 1500.
+
+So yeah. It rolls all, rolls all /again/, then busts immediately, despite me having 1500 more points to take if it let me. That's... odd.
+
+Oh, maybe they weren't properly marked as unused?
+
+Oh, it was rerolling twice because I literally had the command in twice, that one's on me.
+
+Hm. Okay so the autobust seems to be... at some point it's being reassigned val of 9, which should only happen after farkling.
+
+Okay, fixed that part. Now it rerolls mostly properly, I just need to change it so it rerolls from the used state to the fresh reroll, like it does when you end turn and it rolls to farkle.
+Okay. There's a very brief pause in those rolls which I'm not super keen on.
+
+4.24pm
+Okay, fixed. Now it rolls cleanly without that pause, and simply replaces the first roll with a transition roll and then continues with the rest. So the randomness and roll count isn't changed, it just adds a transition if the die was used/held.
+
+Now just going to make those single resting frames.
+
+Should I have it just sit there until you hit 'roll' the first time?
+
+4.45pm
+Okay, single frames are made. So, the number frames are to be used if un-held, as the rest of the time it ends on frame 11 correctly. And the farkle frames are to be used on startup. Otherwise the rolling frames are fine.
+
+5.00pm
+Okay, much much nicer now. Un-held die stick to the right frame, and the farkle anim starts from frame 11/0, which looks far nicer.

@@ -90,7 +90,7 @@ fark_colours = { # for farkle_arcade
         }
 
 
-def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour=None, anim_frames=[], recolour=None):
+def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour=None, anim_frames=[], recolour=None, make_frame_zero=False):
 
     if outgoing == "blank":
         outgoing_path = None
@@ -124,6 +124,8 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
     for filepath in sorted(frame_blanks):
         if filepath == "00.png":
             continue
+        if make_frame_zero and filepath != "11.png": # frame zero is actually frame 11 but w/e, it'll work
+            continue
         with Image.open(frame_path + filepath) as f_blank:
             #print(f"f_blank open: {filepath}")
             frame_no = filepath.replace(".png", "")
@@ -154,6 +156,10 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
                     print(f"No frame mask found for {filepath}. All frame masks: \n{frame_masks}")
 
                 new = recolour_frame(new, outgoing_colour, incoming_colour, frame_mask_dir + frame_mask, frame_no)
+
+            if make_frame_zero:
+                new.save(make_frame_zero)
+                return None
             anim_frames.append(new)
     return anim_frames
 
@@ -253,11 +259,11 @@ if make_farkle_chain:
         count += 1
 
 
-def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None, end_blank=True, filename="temp"): ## redo this to use a dict instead of listing them all out like this.
-
-    def make_from_list(incoming_list, output_path, colour=None, subfolder=None, is_other=False, end_blank=True):
+def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None, end_blank=True, filename="temp", anim_frames=None): ## redo this to use a dict instead of listing them all out like this.
+    def make_from_list(incoming_list, output_path, colour=None, subfolder=None, is_other=False, end_blank=True, anim_frames=None):
         ## For full roll for each letter before changing, set end_roll=True.
-        anim_frames = []
+        if not anim_frames:
+            anim_frames = []
 
         for i, key in enumerate(incoming_list):
             if i == len(incoming_list)-2: # is -2 so that the [i+1] lands on the last entry.
@@ -274,7 +280,7 @@ def make_combination_image(make_farkle = False, make_bust=False, make_other=None
     if make_bust:
         make_from_list(bust_list, output_path = "bust_all_in_one", colour="bust")
     if make_other:
-        make_from_list(make_other, output_path = filename, colour=make_other_colour, subfolder = other_subfolder, end_blank=False) # is_other=True to add blank to start
+        make_from_list(make_other, output_path = filename, colour=make_other_colour, subfolder = other_subfolder, end_blank=False, anim_frames=anim_frames) # is_other=True to add blank to start
 """
 make number > bust
 """
@@ -331,13 +337,18 @@ def colour_players_dice(player_colour, force_recolour=False):
     number > bust
     Also need player-colour blank > farkle-coloured blank and farkle-blank > player-colour blank
     """
+
     from_x_to_y_filenames = os.listdir(output_dir+f"BASE\\from_x_to_y")
     output_path = output_dir + f"num_by_colour\\{player_colour}\\"
+
+
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
     elif not force_recolour:
         print(f"Directory for {output_path} already exists. Stopping. Set 'force_recolour' to force re-creation")
         return output_path
+
+    make_single_frames(to_make="123456", set_colour=player_colour, output_dir=output_path)
 
     for path in from_x_to_y_filenames:
     ###def colour_player(player_no, player_colour):
@@ -587,8 +598,15 @@ def held_and_used():
                 #new_image.show()
 
 
-def make_single_frames():
+def make_single_frames(to_make="farklebustd", set_colour=None, output_dir=None):
     """For making a frame[0] version of each char. Currently I still only have them as blanks"""
+    if not output_dir:
+        directory = f"{os.getcwd()}\\dice_graphics\\BASE\\stills\\"
+    else:
+        directory = output_dir
+    print(f"Making single frames for `{to_make}`")
+    for char in to_make:
+        get_roll(outgoing="blank", outgoing_colour=None, incoming=char, incoming_colour=set_colour, anim_frames=None, recolour=True, make_frame_zero=directory+char+".png")
 
 if "__main__" == __name__:
 
