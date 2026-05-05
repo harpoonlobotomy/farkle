@@ -1201,7 +1201,7 @@ def make_window():
             window[f"die_{die_inst.place_no}"].update(filename=gif_data.player_1_gifs[str(die_inst.value)][0] if players.player_1 == players.current else gif_data.player_2_gifs[str(die_inst.value)][0])
         #CHANGEME: this should be the specific char png img, not a gif.
 
-    def roll_dice(used_dice=None, do_refresh=False, reroll_all=False) -> None:
+    def roll_dice(used_dice=None, reroll_all=False) -> None:
         print_points_line(string_print="Rolling...")
 
         if reroll_all:
