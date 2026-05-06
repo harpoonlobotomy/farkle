@@ -286,3 +286,14 @@ Okay, single frames are made. So, the number frames are to be used if un-held, a
 
 5.00pm
 Okay, much much nicer now. Un-held die stick to the right frame, and the farkle anim starts from frame 11/0, which looks far nicer.
+
+5.32pm
+Okay. So - settings.
+
+Roll speed (player + pc separately.) < - done
+Roll automatically< - done. Not just the first roll, but each turn, human players have to click roll to start that turn's roll. Not sure if I want to keep that or make it only the first time when the game starts. Will try this out for a bit.
+
+Can also set export to json and start rolling immediately via the interface.
+
+9.49pm
+Well, the above in theory - currently it's overwriting the json output each turn. Need to fix that before much else. 

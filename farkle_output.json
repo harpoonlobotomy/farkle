@@ -1,0 +1,43 @@
+{
+  "d2d1ee": {
+    "0": {
+      "2": {
+        "player": "player_1",
+        "initial roll": [
+          4,
+          5,
+          6,
+          6,
+          6,
+          1
+        ],
+        "rolls": {
+          "0": {
+            "Dice": [
+              6,
+              6,
+              6,
+              1
+            ],
+            "Matches": {
+              "three (or four) of a kind": {
+                "6": {
+                  "3": 600
+                }
+              },
+              "single ones": {
+                "1": {
+                  "1": 100
+                }
+              }
+            },
+            "Roll score": 700
+          }
+        },
+        "turn_end_score": {
+          "700": 2050
+        }
+      }
+    }
+  }
+}

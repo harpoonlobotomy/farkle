@@ -5,6 +5,7 @@ started April 2026 //  [gui version] v 1.5 // harpoonlobotomy"""
 #   [cd to py file dir first] pyinstaller --onefile --noupx --icon farkle_gui.ico farkle_gui.pyw
 
 # have commented out to_json throughout, add it back later.
+from genericpath import isfile
 from time import sleep
 import random, os
 import FreeSimpleGUI as sg
@@ -50,23 +51,32 @@ class settings:
 
     player1_name:str = None
     player1_col:str = None
+    player1_speed:float = 0.2
     player2_name:str = None
     player2_col:str = None
+    player2_speed:float = 0.2
+
+    player_roll_speed:float = 0.2
+    computer_roll_speed:float = 0.2
     playstyle:str = None
     is_singleplayer:bool = None
     computer_think_aloud:bool = None
     output_file:str = None
     game_theme:str = None
 
+    roll_on_start:bool = False
+    export_to_file:bool = False
+
     t:theme_data = None
 
     def init(self, settings_dict):
 
-        for item in settings.__annotations__: # counted here as long as the type is given, apparently. Can't be the best way to do this but seems to be working so will go with it.
-            if item == "t":
-                continue
+        for item in settings_dict["defaults"]: # counted here as long as the type is given, apparently. Can't be the best way to do this but seems to be working so will go with it.
+
             setattr(settings, item, settings_dict["user_set"][item] if settings_dict["user_set"].get(item) else settings_dict["defaults"][item])
 
+        self.player_roll_speed = self.player_roll_speed / 1000
+        self.computer_roll_speed = self.computer_roll_speed / 1000
 
 class theme_data():
 
@@ -481,8 +491,6 @@ colours = {
     "cyan": "\033[1;36m",
 }
 
-export_data = False
-
 class outputter:
 
     def __init__(self):
@@ -497,55 +505,63 @@ class outputter:
             file = settings.output_file
 
         elif file_selection == "settings":
-            file = rf"{os.getcwd()}\farkle_settings.json"
+            file = f"{os.getcwd()}\\farkle_settings.json"
         return file
 
     def load_json(self, file_selection):
 
         file = self.file_select(file_selection)
-
-        import json
-        with open(file, "r") as f:
-            file_data = json.load(f)
-
+        print(f"\nfile in load_json: {file}\n")
+        if os.path.isfile(file):
+            import json
+            with open(file, "r") as f:
+                file_data = json.load(f)
+        else:
+            file_data = {}
+        print(f"File data: {file_data}\n")
         return file_data
 
     def output_to_file(self, data, file_selection):
 
         file = self.file_select(file_selection)
-
+        print(f"\nfile in output_to_file: {file}\n Dumping the following data: {data}")
         import json
         with open(file, "w") as f:
             json.dump(data, f, indent=2)
 
 
     def start_game(self):
-
         self.game_data = {self.session_ID: {0: {}}}
+        print(f"Starting game: {self.game_data}")
 
 
     def output_gamedata(self, player, turn = None, end_game=False):
-
-        if not export_data:
+        print("Outputting game data")
+        if not settings.export_to_file:
+            print("Not set to export to file.")
             return
 
         farkle_file = self.load_json("gamedata")
-
+        print(f"existing farkle file loaded: {farkle_file}")
         gamedata = self.game_data.copy()
 
         if farkle_file:
             for entry in farkle_file:
+                print(f"Entry in farkle_file: {entry}")
                 if entry and entry != self.session_ID:
+                    print(f"Entry is not self.session_id: {entry}")
                     gamedata[entry] = farkle_file[entry]
 
         if end_game:
             gamedata[self.session_ID][players.total_games]["game_score"] = {players.current.name: players.current.game_score, players.opponent.name: players.opponent.game_score}
 
-        self.output_to_file(self, gamedata, "gamedata")
+        print(f"Outputting gamedata: {gamedata}")
+        self.output_to_file(gamedata, "gamedata")
 
 
-    def collect_turndata(self, player:"playerInst", matches=None, die_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
+    def collect_turndata(self, player:"playerInst", matches=None, dice_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
 
+        print(f"Collecting turndata: \nMatches: {matches} // die_rolled: {dice_rolled} // roll_score: {roll_score} // bust: {bust} // turn_end: {turn_end} // game_end: {game_end} // initial_roll: {initial_roll}\n")
         """
             {total_turns}: {
                 player: {player.name},
@@ -554,31 +570,33 @@ class outputter:
             }
 
         """
-        write_turn_data = False#True
-        force_no_writing = True
-        if force_no_writing:
+        #write_turn_data = False#True
+        #force_no_writing = True
+        if not settings.export_to_file:#force_no_writing:
+            print("not settings.export_to_file")
             return
 
-        if die_rolled:
-            if not isinstance(die_rolled, list|set|tuple):
-                die_rolled = list(die_rolled)
+        if dice_rolled:
+            if not isinstance(dice_rolled, list):
+                dice_rolled = list(dice_rolled)
 
-        if initial_roll:
-            initial_roll = list(i.value for i in dice.dice)
+        #if initial_roll:
+            #initial_roll = list(i.value for i in dice.dice)
 
         if self.turn_data and self.turn_data.get(players.total_turns):
             current_data = self.turn_data[players.total_turns]
         else:
-            self.turn_data[players.total_turns] = {"player": player.name, "initial roll": initial_roll, "rolls": {}}
+            self.turn_data[players.total_turns] = {"player": player.name, "initial roll": list(i.value for i in dice.dice), "rolls": {}}
             current_data = self.turn_data[players.total_turns]
 
         if matches:
-            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": matches, "Roll score": roll_score})
+            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in dice_rolled), "Matches": matches, "Roll score": roll_score})
 
         if bust:
-            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in die_rolled), "Matches": "BUST", "Roll score": roll_score})
+            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in dice_rolled), "Matches": "BUST", "Roll score": roll_score})
             current_data["turn_end_score"] = {0: player.game_score}
 
+        write_turn_data = False
         if turn_end:
             current_data["turn_end_score"] = {player.turn_score: player.game_score}
             if write_turn_data:
@@ -644,8 +662,9 @@ class playerInst:
         self.wins = 0
         self.losses = 0
         self.held_dice = None
+        self.roll_speed = 0.2
 
-        self.playstyle = "standard"
+        self.playstyle = None
 
     def __repr__(self):
         return f"<player: {self.name} // held_score: {self.held_dice} // turn_score: {self.turn_score}>"
@@ -685,6 +704,7 @@ def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red"
         player2 = players.default_playstyle
 
     player_1 = playerInst(player1, skin=player1_col)
+    player_1.roll_speed = settings().player_roll_speed
     players.players.add(player_1)
     players.player_1 = player_1
     players.current = player_1
@@ -698,6 +718,10 @@ def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red"
         players.autoplay = player_2
         player_2.playstyle = players.default_playstyle
         player_2.name = player_2.playstyle + "Bot"
+        players.player_2.roll_speed = settings().computer_roll_speed
+    else:
+        players.player_2.roll_speed = settings().player_roll_speed
+
 
     return dict({"player_1": player_1, "player_2": player_2})
 
@@ -828,14 +852,13 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
                     held_score += 50 * count
                     matches["single fives"] = ({item: {count: int(50 * count)}})
 
-    no_playstyle = False#True
-    if not no_playstyle:
-        if players.is_singleplayer and player.playstyle and (used_dice and len(used_dice) != len(dice_selection)): # only for NPC
-            held_score, updated_dice = apply_playstyle(player, held_score, dice_selection)
-            if updated_dice:
-                used_dice = updated_dice
+    if players.is_singleplayer and player.playstyle and (used_dice and len(used_dice) != len(dice_selection)): # only for NPC
+        held_score, updated_dice = apply_playstyle(player, held_score, dice_selection)
+        if updated_dice:
+            used_dice = updated_dice
 
-        to_json.collect_turndata(players.current, matches=matches, die_rolled=dice_selection, roll_score=held_score)
+    print("Sending game data to collect_turndata from get_score")
+    to_json.collect_turndata(players.current, matches=matches, dice_rolled=dice_selection, roll_score=held_score)
 
     if not matches and not test_only:
         player.turn_score = 0
@@ -871,7 +894,8 @@ def mark_used(in_loop):
 def take_roll(player:playerInst):
 
     player.game_score += player.turn_score
-    if export_data:
+    if settings.export_to_file:
+        print("Sending turn_end to collect_turndata from take_roll")
         to_json.collect_turndata(player, turn_end=True)
 
 
@@ -907,13 +931,6 @@ def make_horz_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
 
 def make_window():
 
-    """def image_to_data(im, i):
-        from io import BytesIO
-        with BytesIO() as output:
-            im.save(output, format=f"PNG", index = i)
-            data = output.getvalue()
-        return data"""
-
     def run_gif_anim(gif_filepath, die_key):
 
         image = Image.open(gif_filepath)
@@ -926,7 +943,7 @@ def make_window():
             data.append(accumImage.copy())
             window[die_key].update(data=accumImage)
 
-            sleep(.02)
+            sleep(players.current.roll_speed)
             window.refresh()
 
     def play_farkle_intro():
@@ -1226,7 +1243,8 @@ def make_window():
             print_output_text(text='')
             sleep(.2)
             roll_dice()
-            to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True) # only initial if first roll
+            print("Sending collect_turndata from start_turn for npc")
+            to_json.collect_turndata(players.current, dice_rolled=dice.dice, initial_roll=True) # only initial if first roll
             #colour_buttons()
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
             sleep(.3)
@@ -1459,6 +1477,7 @@ def make_window():
     window['-TAKE-'].bind("<Return>", "_Enter")
 
     round_started = False
+    dice.showing_farkle=False
     opened1 = False
     window['-SEC1-'].update(visible=False)
 
@@ -1470,7 +1489,6 @@ def make_window():
         print_output_text(text=f"{players.current.name} is starting their turn.")
 
     """
-    dice.showing_farkle=True#False
 
     while True:
 
@@ -1522,7 +1540,7 @@ def make_window():
                 elif outcome == "game_won":
                     round_over(players.current)
 
-        if not round_started:
+        if not round_started and (event == "-ROLL-" or settings.roll_on_start):
 
             autoplay_loop_event, values = window.read(timeout=100)
 
@@ -1534,7 +1552,8 @@ def make_window():
                 return "exit", None
             print_points_line(string_print='', print_banked=False)
             roll_dice()
-            to_json.collect_turndata(players.current, die_rolled=dice.dice, initial_roll=True)
+            print("Sending initial roll to collect_turndata from player1 first turn")
+            to_json.collect_turndata(players.current, dice_rolled=dice.dice, initial_roll=True)
             score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
             round_started = True
             print_output_text(text=output_str)
@@ -1588,6 +1607,7 @@ def make_window():
                     clear_held_and_used_dice(reset_val=False)
                 else:
                     roll_dice(used_dice)
+
                 score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
                 print_output_text(text=output_str)
                 if check_for_close_event(event):
@@ -1623,13 +1643,13 @@ def make_window():
 
 def settings_window():
 
-    def make_settings_button(width:float=std_btn, height:float=std_btn, key:str="", key_str:str="Pause", tooltip_str=''):
+    def make_settings_button(width:float=std_btn, height:float=std_btn, key:str="", key_str:str="Pause", tooltip_str='', metadata=None):
         if key:
             key_formatting = key
         else:
             key_upper = key_str.upper()
             key_formatting = str("-" + key_upper + '-')
-        return sg.Button(auto_size_button=True, button_text = key_str, key=key_formatting, mouseover_colors=settings.t.theme_dict[sg.theme()]["button_mouseover"], use_ttk_buttons=True, size=(width,height), font=(f"courier {std_dot_size} bold"), disabled_button_color = "#756C5F", tooltip=tooltip_str if tooltip_str else None)
+        return sg.Button(auto_size_button=True, button_text = key_str, key=key_formatting, mouseover_colors=settings.t.theme_dict[sg.theme()]["button_mouseover"], use_ttk_buttons=True, size=(width,height), font=(f"courier {std_dot_size} bold"), disabled_button_color = "#756C5F", tooltip=tooltip_str if tooltip_str else None, metadata=metadata)
 
     def make_playstyle_buttons():
         playstyle_buttons = []
@@ -1649,19 +1669,51 @@ def settings_window():
         """
         if visible:
             collapsable = [
-            #[sg.VStretch()],
             [sg.Column(layout, key=key + "_inner", element_justification="center", background_color=region_3_col, pad=0)],
-            #[sg.VStretch()]
             ]
         else:
             collapsable =[
                 [sg.Column(layout, key=key + "_inner", element_justification="center", background_color=region_3_col, pad=0)]]
         return sg.pin(sg.Column(layout=collapsable, key=key, visible=visible, justification="center", background_color=region_2_col, pad=0))
 
-        return sg.pin(sg.Column(layout, key=key, visible=visible, element_justification="center", vertical_alignment="center", expand_y=True))
 
-    singleplayer_open = mode_open = names_open = themes_open = False
-    blank_open = True
+    test_die_path = f"{os.getcwd()}\\dice_graphics\\autogen\\full_roll\\farkle_in_one_testing_quicker.gif"
+    def test_die(pc_or_comp):
+        return [sg.Image(filename = test_die_path, key = f"test_die_anim_{pc_or_comp}", enable_events=True)]
+
+    def set_speed(pc_or_comp):
+
+        return [
+        [sg.Text(text=f"The current speed is `{getattr(settings, pc_or_comp)*100}`.\nClick the die to have it animate at this speed.", key=f"speed_text_{pc_or_comp}")],
+        [sg.Stretch()],
+        test_die(pc_or_comp),
+        [sg.Stretch()],
+        [sg.Input(default_text=getattr(settings, pc_or_comp)*100, key=f"speed_input_{pc_or_comp}")],
+        [sg.Ok(key=f"set_input_{pc_or_comp}", bind_return_key=False), sg.Cancel(key=f"cancel_input_{pc_or_comp}")]
+        ]
+
+    change_speed_buttons = [
+        [sg.Button(button_text=f"Change player roll speed ({settings.player_roll_speed*100})", key="change_play_roll"), sg.Button(button_text=f"Change computer roll speed ({settings.computer_roll_speed*100})", key="change_comp_roll")],
+        ]
+
+    advanced = [
+        [sg.VStretch()],
+        [settings_collapse(layout=change_speed_buttons, key="speed_buttons", visible=True)],
+        [settings_collapse(layout = set_speed("player_roll_speed"), key="player_roll_spd"), settings_collapse(layout = set_speed("computer_roll_speed"), key="comp_roll_spd")],
+        [sg.VStretch()],
+        [sg.HSeparator(color=gold)],
+        [sg.VStretch()],
+        [make_settings_button(width=std_btn*5, height=1, metadata = settings.roll_on_start,
+            key_str="Automatically start the first roll" if settings.roll_on_start else "Not starting rolling immediately", key="start_roll_immediately",
+                tooltip_str="If turned off, the game won't start until the player clicks 'Roll'.")],
+        [sg.VStretch()],
+        [sg.HSeparator(color=gold)],
+        [sg.VStretch()],
+        [make_settings_button(width=std_btn*5, height=1, metadata = settings.export_to_file,
+            key_str="Not exporting play data to file" if not settings.export_to_file else "Exporting play data to file", key="export_to_file",
+                tooltip_str="Export the data from your games to a .json file.")],
+        [sg.VStretch()]
+    ]
 
     singleplayer = [
                      [sg.Canvas(size=(widest_measure,22), pad=2, background_color=canvas_col)],
@@ -1682,7 +1734,6 @@ def settings_window():
                      [sg.HSeparator(color=gold)],
                      [sg.Canvas(size=(widest_measure-30,10), pad=0, background_color=canvas_col)],
                      [sg.Text(f"Currently, the computer is using the playstyle `{players.default_playstyle}`.\nWhat do you want it to be?", justification="center", text_color=theme_data().theme_dict[sg.theme()]["gold_text"])],
-                     #[sg.Text(f"The options are: {list(f"[ {i} ]" for i in players.playstyles)}`", justification="center")],
                      [sg.Canvas(size=(widest_measure-30,6), pad=0, background_color=canvas_col)],
                      make_playstyle_buttons(),
                      [sg.Canvas(size=(widest_measure-30,6), pad=0, background_color=canvas_col)],
@@ -1727,16 +1778,11 @@ def settings_window():
     ]
     theme_sections = [
                     [sg.Canvas(size=(554, 0), background_color=canvas_col)],
-                    #[sg.VStretch(background_color="green")],
-                    [settings_collapse(blank_settings, "blank"),settings_collapse(singleplayer, '-SEC1-'), settings_collapse(mode, '-MODE-'), settings_collapse(names, '-NAMES-'), settings_collapse(themes, '-THEMES-')],
+                    [settings_collapse(blank_settings, "blank"), settings_collapse(singleplayer, '-SEC1-'), settings_collapse(mode, '-MODE-'), settings_collapse(names, '-NAMES-'), settings_collapse(themes, '-THEMES-'), settings_collapse(advanced, '-ADVANCED-')],
                     [sg.Canvas(size=(554, 1), background_color=canvas_col, pad=0)]
-                    #[sg.VStretch(background_color="green")],
-                    #[sg.Stretch(), sg.Canvas(size=(550,2), pad=2), sg.Stretch()],
-## Cannot get it to be properly centred no matter what I do. Getting insanely frustrating tbh. Just going to hardcode the placements I think.
     ]
 
     settings_options = [
-                    #[sg.VStretch()],
                     [sg.HSeparator(color=gold)],
                     [
                         make_settings_button(width=std_btn, height=1, key="panel_single_player", key_str="Single player"), add_dots(), sg.HSeparator(color=gold), add_dots(),
@@ -1744,12 +1790,12 @@ def settings_window():
                         make_settings_button(width=std_btn, height=1, key="panel_names", key_str="Player names"), add_dots(), sg.HSeparator(color=gold), add_dots(),
                         make_settings_button(width=std_btn, height=1, key="panel_themes", key_str="Colour themes")
                         ],
-                    #[sg.VStretch()],
+                    [sg.Stretch()],
+                    [make_settings_button(width=std_btn*2, height=1, key="panel_advanced", key_str="Advanced settings")],
                     [sg.HSeparator(color=gold)],
                     [sg.Column(layout = theme_sections, size=(570, 245), justification="center", element_justification="center", background_color=region_1_col, pad=((4,2),(2,2)))],
                     [sg.HSeparator(color=gold)],
-                    #[sg.VStretch()],
-                    #[sg.Stretch(), collapse(singleplayer, '-SEC1-'), collapse(mode, '-MODE-'), collapse(names, '-NAMES-'), collapse(themes, '-THEMES-'), sg.Stretch()],
+
                     [sg.Stretch(), add_dots(), make_settings_button(width=std_btn, height=1, key="leave", key_str="Save changes", tooltip_str="Return to game with the new settings."), add_dots(), make_settings_button(width=std_btn, height=1, key="leave_no_save", key_str="Return without saving", tooltip_str="Closing the settings window without applying changes."), add_dots(), make_settings_button(width=std_btn, height=1, key="restore", key_str="[Restore defaults]", tooltip_str="Restore settings to defaults. Will restart the game."), add_dots(), sg.Stretch()]
                     ]
 
@@ -1763,8 +1809,21 @@ def settings_window():
     settings_dict = {}
 
     settings_window["blank"].update(visible=True)
-    while True:
 
+    def swap_panels(list_to_close, panel_to_open="ADVANCED"):
+        for panel in list_to_close:
+            if settings_window[panel].visible:
+                settings_window[panel].update(visible=False)
+
+        if settings_window[panel_to_open].visible:
+            settings_window[panel_to_open].update(visible=False)
+            settings_window['blank'].update(visible=True)
+        else:
+            settings_window['blank'].update(visible=False)
+            settings_window[panel_to_open].update(visible=True)
+
+
+    while True:
         event, values = settings_window.read(timeout=1000)
 
         if values and values.get("player_1_name"):
@@ -1782,95 +1841,135 @@ def settings_window():
                     settings_window[style].update(disabled=True if event == style else False)
 
             if event.startswith("panel_"):
+# panels:  '-MODE-', '-NAMES-', '-THEMES-', '-SEC1-', "-ADVANCED-"
+                if event == "panel_advanced":
+                    settings_window["start_roll_immediately"].update(button_color=settings_window["start_roll_immediately"].DisabledButtonColor if not settings_window["start_roll_immediately"].metadata else settings.t.theme_dict[sg.theme()]["BUTTON"])
+                    settings_window["export_to_file"].update(button_color=settings_window["export_to_file"].DisabledButtonColor if not settings_window["export_to_file"].metadata else settings.t.theme_dict[sg.theme()]["BUTTON"])
+                    swap_panels(list_to_close = ['-MODE-', '-NAMES-', '-THEMES-', '-SEC1-'], panel_to_open="-ADVANCED-")
+
                 if event == "panel_single_player":
-                    if mode_open:
-                        settings_window['-MODE-'].update(visible=False)
-                        mode_open = False
-                    if names_open:
-                        settings_window['-NAMES-'].update(visible=False)
-                        names_open = False
-                    if themes_open:
-                        settings_window['-THEMES-'].update(visible=False)
-                        themes_open = False
 
-                    singleplayer_open = not singleplayer_open
+                    swap_panels(list_to_close = ['-MODE-', '-NAMES-', '-THEMES-', "-ADVANCED-"], panel_to_open="-SEC1-")
 
-                    if singleplayer_open:
-                        settings_window['blank'].update(visible=False)
-
-                    settings_window["choose_single"].update(disabled=True if players.is_singleplayer else False)
-                    settings_window["choose_two"].update(disabled=False if players.is_singleplayer else True)
-                    settings_window['-SEC1-'].update(visible=singleplayer_open)
-
-                    if not singleplayer_open:
-                        settings_window['blank'].update(visible=True)
+                    if settings_window['-SEC1-'].visible:
+                        settings_window["choose_single"].update(disabled=True if players.is_singleplayer else False)
+                        settings_window["choose_two"].update(disabled=False if players.is_singleplayer else True)
 
                 if event == "panel_mode":
-                    if singleplayer_open:
-                        settings_window['-SEC1-'].update(visible=False)
-                        singleplayer_open = False
-                    if names_open:
-                        settings_window['-NAMES-'].update(visible=False)
-                        names_open = False
-                    if themes_open:
-                        settings_window['-THEMES-'].update(visible=False)
-                        themes_open = False
+                    swap_panels(list_to_close = ['-SEC1-', '-NAMES-', '-THEMES-', "-ADVANCED-"], panel_to_open='-MODE-')
 
-                    mode_open = not mode_open
-                    for style in players.playstyles:
-                        settings_window[style].update(disabled=True if players.default_playstyle == style else False)
-
-                    if mode_open:
-                        settings_window['blank'].update(visible=False)
-
-                    settings_window['-MODE-'].update(visible=mode_open)
-
-                    if not mode_open:
-                        settings_window['blank'].update(visible=True)
+                    if settings_window["-MODE-"].visible:
+                        for style in players.playstyles:
+                            settings_window[style].update(disabled=True if players.default_playstyle == style else False)
 
                 if event == "panel_names":
-                    if singleplayer_open:
-                        settings_window['-SEC1-'].update(visible=False)
-                        singleplayer_open = False
-                    if mode_open:
-                        settings_window['-MODE-'].update(visible=False)
-                        mode_open = False
-                    if themes_open:
-                        settings_window['-THEMES-'].update(visible=False)
-                        themes_open = False
-
-                    names_open = not names_open
-
-                    if names_open:
-                        settings_window['blank'].update(visible=False)
-
-                    settings_window['-NAMES-'].update(visible=names_open)
-
-                    if not names_open:
-                        settings_window['blank'].update(visible=True)
+                    swap_panels(list_to_close = ['-SEC1-', '-MODE-', '-THEMES-', "-ADVANCED-"], panel_to_open='-NAMES-')
 
                 if event == "panel_themes":
-                    if singleplayer_open:
-                        settings_window['-SEC1-'].update(visible=False)
-                        singleplayer_open = False
-                    if mode_open:
-                        settings_window['-MODE-'].update(visible=False)
-                        mode_open = False
-                    if names_open:
-                        settings_window['-NAMES-'].update(visible=False)
-                        names_open = False
+                    swap_panels(list_to_close = ['-SEC1-', '-MODE-', '-NAMES-', "-ADVANCED-"], panel_to_open='-THEMES-')
 
-                    themes_open = not themes_open
-                    if themes_open:
+                    if settings_window["-THEMES-"].visible:
                         settings_window["choose_tan"].update(disabled=True if "tan" in sg.theme() else False)
                         settings_window["choose_navy"].update(disabled=True if "navy" in sg.theme() else False)
                         settings_window["choose_arcade"].update(disabled=True if "arcade" in sg.theme() else False)
-                        settings_window['blank'].update(visible=False)
 
-                    settings_window['-THEMES-'].update(visible=themes_open)
+            pc_or_comp = "player_roll_speed", "computer_roll_speed"
+            "speed_text_{pc_or_comp}"
+            "speed_input_{pc_or_comp}"
+            "set_input_{pc_or_comp}"
+            "cancel_input_{pc_or_comp}"
+            "test_die_anim_{pc_or_comp}"
 
-                    if not themes_open:
-                        settings_window['blank'].update(visible=True)
+            if "player_roll_speed" in event or "computer_roll_speed" in event:
+                if "player_roll_speed" in event:
+                    pc_or_comp = "player_roll_speed"
+                else:
+                    pc_or_comp = "computer_roll_speed"
+            #if event in ["test_die_anim", "set_input_player_roll_speed", "set_input_computer_roll_speed", "cancel_input", "cancel_input1", "player_roll_spd", "change_play_roll", "speed_input", "player_roll_speed", "computer_roll_speed"]:
+                print(f"EVENT FROM THIS: {event} // values: {values}")
+                if event == f"cancel_input_{pc_or_comp}":
+                    settings_window["comp_roll_spd"].update(visible = False)
+                    settings_window["player_roll_spd"].update(visible = False)
+                    if "player" in event:
+                        settings_window["change_play_roll"].update(f"Change player roll speed ({settings.player_roll_speed*100})")
+                    else:
+                        settings_window["change_comp_roll"].update(f"Change computer roll speed ({settings.computer_roll_speed*100})")
+
+                    settings_window["speed_buttons"].update(visible = True)
+        #settings.player_roll_speed = values[f'speed_input_{pc_or_comp}']
+        #settings.computer_roll_speed = values[f'speed_input_{pc_or_comp}']
+                if event == f"set_input_{pc_or_comp}":
+                    settings_dict[f"set_input_{pc_or_comp}"] = values[f"speed_input_{pc_or_comp}"]
+                    settings_window[f"speed_text_{pc_or_comp}"].update(f"The current speed is `{values[f'speed_input_{pc_or_comp}']}`.\nClick the die to have it animate at this speed.")
+                    if "player" in event:
+                        settings_window["change_play_roll"].update(f"Change player roll speed ({values[f'speed_input_{pc_or_comp}']})")
+                    else:
+                        settings_window["change_comp_roll"].update(f"Change computer roll speed ({values[f'speed_input_{pc_or_comp}']})")
+
+                    settings_window["player_roll_spd"].update(visible = False)
+                    settings_window["comp_roll_spd"].update(visible = False)
+                    settings_window["speed_buttons"].update(visible = True)
+
+                if event == f"test_die_anim_{pc_or_comp}":
+                    settings_dict[f"set_input_{pc_or_comp}"] = values[f"speed_input_{pc_or_comp}"]
+                    settings_window[f"speed_text_{pc_or_comp}"].update(f"The current speed is `{values[f'speed_input_{pc_or_comp}']}`.\nClick the die to have it animate at this speed.")
+                    print("Animating gif")
+                    image = Image.open(test_die_path)
+                    frames = image.n_frames
+                    accumImage = sg.tk.PhotoImage(file=test_die_path, format=f'gif -index 0')
+                    data = [accumImage]
+                    for i in range(0, frames):
+                        deltaImage = sg.tk.PhotoImage(file=test_die_path, format=f'gif -index {i}')
+                        accumImage.tk.call(accumImage, 'copy', deltaImage)
+                        data.append(accumImage.copy())
+                        settings_window[f"test_die_anim_{pc_or_comp}"].update(data=accumImage)
+                        sleep(float(values[f"speed_input_{pc_or_comp}"])/100)
+                        settings_window.refresh()
+
+            if event == "change_play_roll" or event == "player_roll_spd":
+                print(f"EVENT: {event}")
+                if settings_window["player_roll_spd"].visible:
+                    settings_window["player_roll_spd"].update(visible = False)
+                    settings_window["speed_buttons"].update(visible = True)
+                else:
+                    settings_window["comp_roll_spd"].update(visible = False)
+                    settings_window["speed_buttons"].update(visible = False)
+                    settings_window["player_roll_spd"].update(visible = True)
+
+            if event == "change_comp_roll":
+                if settings_window["comp_roll_spd"].visible:
+                    settings_window["comp_roll_spd"].update(visible = False)
+                    settings_window["speed_buttons"].update(visible = True)
+                else:
+                    settings_window["speed_buttons"].update(visible = False)
+                    settings_window["player_roll_spd"].update(visible = False)
+                    settings_window["comp_roll_spd"].update(visible = True)
+
+                settings_dict["player_roll_spd"] = values
+                """Pop open a window to enter a new value. Perhaps with a die gif to test with as you change it."""
+
+                settings_dict["comp_roll_spd"] = values
+                """Pop open a window to enter a new value. Perhaps with a die gif to test with as you change it."""
+
+            if event == "start_roll_immediately":
+                print(f"event: {event} // value; {values}")
+                state = not settings_window["start_roll_immediately"].metadata
+                settings_window["start_roll_immediately"].metadata = state
+                print(f'settings_window["start_roll_immediately"].metadata: {settings_window["start_roll_immediately"].metadata}')
+                settings_dict["start_roll_immediately"] = state
+                settings_window["start_roll_immediately"].update("Not starting rolling immediately" if not state else "Automatically start the first roll", button_color=settings_window["start_roll_immediately"].DisabledButtonColor if not state else settings.t.theme_dict[sg.theme()]["BUTTON"])
+    # "Do not start rolling immediately" if settings.roll_on_start else "Automatically start the first roll", key="start_roll_immediately", tooltip_str="If turned off, the game won't start until the player clicks 'Roll'."
+    #   key_str="Do not start rolling immediately" if settings.roll_on_start else "Automatically start the first roll"
+
+            if event == "export_to_file":
+                print(f"event: {event} // value; {values}")
+                state = not settings_window["export_to_file"].metadata
+                settings_window["export_to_file"].metadata = state
+                print(f'settings_window["export_to_file"].metadata: {settings_window["export_to_file"].metadata}')
+                settings_dict["export_to_file"] = state
+                settings_window["export_to_file"].update("Not exporting play data to file" if not state else "Exporting play data to file", button_color=settings_window["export_to_file"].DisabledButtonColor if not state else settings.t.theme_dict[sg.theme()]["BUTTON"])
+    #   "Not exporting play data to file" if settings.export_to_file else "Exporting play data to file"
+
 
             if event == "choose_single":
                 settings_dict["set_singleplayer"] = True
@@ -1915,6 +2014,7 @@ def update_json(update_data:dict):
 
     """updates JSON with provided dict. Only the keys provided will be updated, and only if the value is different to the current value."""
     json_data = to_json.load_json("settings")
+    print(f"JSON DATA: {json_data}")
     for key, value in update_data.items():
         json_data["user_set"][key] = value
 
@@ -1925,7 +2025,25 @@ def apply_settings(settings_dict):
     """applies settings to relevant game vars/classes, and updates JSON if enabled and necessary."""
     update_json_dict = {}
 
+    print(f"SETTINGS DICT:\n\n{settings_dict}\n\n")
+
     for action, data in settings_dict.items():
+
+
+        if action == "set_input_computer_roll_speed":
+            print("set computer roll speed")
+            settings.computer_roll_speed = data
+            update_json_dict["computer_roll_speed"] = int(float(data)*10)
+            print(f'In json dict: {update_json_dict["computer_roll_speed"]}')
+        if action == "set_input_player_roll_speed":
+            print("set player roll speed")
+            settings.player_roll_speed = data
+            update_json_dict["player_roll_speed"] = int(float(data)*10)
+            print(f'In json dict: {update_json_dict["player_roll_speed"]}')
+
+        if action == 'export_to_file':
+            print(f"action == export to file, data: {data}")
+            update_json_dict["export_to_file"] = data
 
         if action == "restore_defaults":
             print("Restoring settings to defaults.")
@@ -1984,6 +2102,7 @@ def apply_settings(settings_dict):
 
     if update_json_dict:
         update_json(update_json_dict)
+    init_settings()
 
 def remove_random_rolls_on_close():
 
