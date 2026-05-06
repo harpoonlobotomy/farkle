@@ -418,3 +418,12 @@ So to swap faces, I just need to exchange 'chars_blanks' for whatever source I h
 Have laid the groundwork for the effect layers. Have to commit before I actually add it though.
 
 I need to add a thing so it'll generate those stills on its own, so all I need to provide is the 3 blanks files and it'll generate the rest if missing.
+
+8.42pm
+the autogeneration seems to be working well. It checks for the directorise in BASE and creates if not existing.
+Should set up an initial check for it BASE is missing entirely, too. But it does seem to work. So it massively cuts down on the number of separate gifs. I still think the original idea had merit but this just seems better.
+
+Now:
+set max decimals for roll speed and set font.
+9.08pm
+okay, max decimals (.1f) is done, font is done. Autogen is fully working, inc hold and rest.

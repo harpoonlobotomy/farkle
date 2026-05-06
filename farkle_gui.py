@@ -378,10 +378,19 @@ gif_data = dice_gifs()
 
 def get_farkle_gifs():
     self_roll_dir = f"{os.getcwd()}\\dice_graphics\\BASE\\self_roll\\"
+    if not os.path.isdir(self_roll_dir):
+        from make_dice_images import make_combination_image
+        for letter in "farklebustd":
+            make_combination_image(make_farkle = False, make_bust=False, make_other=[letter, letter], make_other_colour = None, other_subfolder="BASE\\self_roll", end_blank=False, filename=f"full_roll_{letter}", anim_frames=None)
     full_roll_paths = os.listdir(self_roll_dir)
+
     stills_dir = f"{os.getcwd()}\\dice_graphics\\BASE\\stills\\"
+    if not os.path.isdir(stills_dir):
+        from make_dice_images import make_single_frames
+        make_single_frames(to_make="farklebustd", output_dir=stills_dir)
     stills = os.listdir(stills_dir)
-    for letter in "farkledbust":
+
+    for letter in "farkledbustd":
         if full_roll_paths:
             results = list(f"{self_roll_dir}{i}" for i in full_roll_paths if f"roll_{letter}" in i) # only pure farkle letters here. Anything that mixes with player colours is in the player dict.
             if results:
@@ -389,6 +398,18 @@ def get_farkle_gifs():
         still_images = list(f"{stills_dir}{i}" for i in stills if i == f"{letter}.png")
         if still_images:
             gif_data.farkle_stills[letter] = still_images[0]
+
+    die_states_dir = f"{os.getcwd()}\\dice_graphics\\BASE\\die_states\\"
+    if not os.path.isdir(die_states_dir):
+        print("Need to make die states stills")
+        from make_dice_images import make_single_frames
+        make_single_frames(to_make="123456", set_colour="used_die", output_dir=die_states_dir)
+        print(f"Made used_die, now making held_die: {os.listdir(die_states_dir)}")
+
+        make_single_frames(to_make="123456", set_colour="held_die", output_dir=die_states_dir)
+        print(f"held_die made too: {os.listdir(die_states_dir)}")
+
+
 
     for file in os.listdir(f"{os.getcwd()}\\dice_graphics\\BASE\\die_states\\"):
         val = file[:1]
@@ -1748,23 +1769,26 @@ def settings_window():
         return sg.pin(sg.Column(layout=collapsable, key=key, visible=visible, justification="center", background_color=region_2_col, pad=0))
 
 
-    test_die_path = f"{os.getcwd()}\\dice_graphics\\autogen\\full_roll\\farkle_in_one_testing_quicker.gif"
+    test_die_path = f"{os.getcwd()}\\dice_graphics\\farkle_in_one_testing_quicker.gif"
     def test_die(pc_or_comp):
         return [sg.Image(filename = test_die_path, key = f"test_die_anim_{pc_or_comp}", enable_events=True)]
 
     def set_speed(pc_or_comp):
 
         return [
-        [sg.Text(text=f"The current speed is `{getattr(settings, pc_or_comp)*100}`.\nClick the die to have it animate at this speed.", key=f"speed_text_{pc_or_comp}")],
+        [sg.Text(text=f"The current speed is `{getattr(settings, pc_or_comp)*100:.1f}`.\nClick the die to have it animate at this speed.", key=f"speed_text_{pc_or_comp}")],
         [sg.Stretch()],
         test_die(pc_or_comp),
         [sg.Stretch()],
-        [sg.Input(default_text=getattr(settings, pc_or_comp)*100, key=f"speed_input_{pc_or_comp}")],
+        [sg.Input(default_text=f'{getattr(settings, pc_or_comp)*100:.1f}', key=f"speed_input_{pc_or_comp}")],
         [sg.Ok(key=f"set_input_{pc_or_comp}", bind_return_key=False), sg.Cancel(key=f"cancel_input_{pc_or_comp}")]
         ]
 
+
     change_speed_buttons = [[sg.VStretch()],
-        [sg.Button(button_text=f"Change player roll speed ({settings.player_roll_speed*100})", key="change_play_roll"), sg.Button(button_text=f"Change computer roll speed ({settings.computer_roll_speed*100})", key="change_comp_roll")],
+        [sg.VStretch()],
+        [make_settings_button(width = std_btn*3, height = 1, key_str = f"Change player roll speed ({(settings.player_roll_speed*100):.1f})", key="change_play_roll"),
+        make_settings_button(width = std_btn*3+3, height = 1, key_str = f"Change computer roll speed ({(settings.computer_roll_speed*100):.1f})", key="change_comp_roll")],
         ]
 
     advanced = [

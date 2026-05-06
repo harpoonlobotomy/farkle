@@ -169,6 +169,9 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
                 new = recolour_frame(new, outgoing_colour, incoming_colour, frame_mask_dir + frame_mask)
 
             if make_frame_zero:
+                directory = os.path.dirname(make_frame_zero)
+                if not os.path.isdir(directory):
+                    os.makedirs(directory)
                 new.save(make_frame_zero)
                 return None
             anim_frames.append(new)
@@ -212,14 +215,14 @@ def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=Tru
     if start_from_blank:
         anim_frames = get_roll(outgoing="blank", outgoing_colour=outgoing_colour, incoming=outgoing_char, incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour)
 
-    if start_roll: # means we start with a full rotation of the outgoing, from 0
+    if start_roll: # means we start with a full rotation of the outgoing
         anim_frames = get_roll(outgoing=outgoing_char, outgoing_colour=outgoing_colour, incoming=outgoing_char, incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour)
 
-    if blank_before_incoming:
+    if blank_before_incoming: # TODO: Could use this for the farkle anim, but would have to change the reroll to accomodate.
         anim_frames = get_roll(outgoing=outgoing_char, outgoing_colour=outgoing_colour, incoming="blank", incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour)
         anim_frames = get_roll(outgoing="blank", outgoing_colour=outgoing_colour, incoming=incoming_char, incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour)
     else:
-        anim_frames = get_roll(outgoing=outgoing_char, outgoing_colour=outgoing_colour, incoming=incoming_char, incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour)
+        anim_frames = get_roll(outgoing=outgoing_char, outgoing_colour=outgoing_colour, incoming=incoming_char, incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour) # Added start_from_100 to this, as I think it's the only one that'll be applicable here. Setting this up for the autogeneration of farkle full roll.
 
     if end_roll:
         anim_frames = get_roll(outgoing=incoming_char, outgoing_colour=outgoing_colour, incoming=incoming_char, incoming_colour=incoming_colour, anim_frames=anim_frames, recolour=recolour)
@@ -326,7 +329,7 @@ def apply_colour_to_gif(base_image, outgoing_colour, incoming_colour, target_pat
 
 def colour_players_dice(player_colour, force_recolour=False, just_stills=False):
 
-    #from_x_to_y_filenames = os.listdir(output_dir+f"BASE\\from_x_to_y")
+
     output_path = output_dir + f"num_by_colour\\{player_colour}\\"
 
     if not os.path.isdir(output_path):
@@ -375,52 +378,7 @@ def do_window():
         chain_gif = list(i for i in chain_gifs if i.startswith(f"farkle_chain_{char}_{advance}"))
         if chain_gif:
             chain[char] = chain_dir+chain_gif[0]
-    """    def chained():
 
-        chained_output = []
-        chain = {}
-        chain_dir = output_dir + f"full_roll\\"
-        chain_gifs = os.listdir(chain_dir)
-        for i, char in enumerate(("f", "a", "r", "k", "l", "e")):
-            advance = str(i+1)
-            chain_gif = list(i for i in chain_gifs if i.startswith(f"farkle_chain_{char}_{advance}"))
-            if chain_gif:
-                chain_gif = chain_gif[0]
-                chain[char] = chain_dir+chain_gif
-                chained_output.append(sg.Image(source=chain_dir+chain_gif, key=char, background_color="blue"))
-            else:
-                print(f"No chain gif found for {i+1}, {char}")
-        return chained_output, chain
-
-    chain_images, chain_dict = chained()
-
-    gif_layout = [chain_images]
-
-    window = sg.Window(title="rolling dice intro", layout = gif_layout, finalize=True)
-
-    f_image = Image.open(chain_dict["f"])
-    frames = 33
-    accumImage = sg.tk.PhotoImage(file=chain_dict["f"], format=f'gif -index 0')
-    data = [accumImage]
-    for i in range(1, frames):
-        deltaImage = sg.tk.PhotoImage(file=chain_dict["f"], format=f'gif -index {i}')
-        accumImage.tk.call(accumImage, 'copy', deltaImage)
-        data.append(accumImage.copy())
-
-    print(f"DATA: {data}")
-    while True:
-        event, values = window.read(10)
-        for key in ("f"):
-            for i in range(0,33): # single rotati
-                window[key].update(data=data[i])#, duration=100)# time_between_frames=20)
-
-
-import PySimpleGUI as sg"""
-    """
-
-THE FOLLOWING SETUP DOES WORK.
-
-    """
     sg.Text.char_width_in_pixels(("Courier New", 11))
     data_dict = {}
     letter_frames = {}
@@ -561,13 +519,26 @@ def held_and_used():
 
 def make_single_frames(to_make="farklebustd", set_colour=None, output_dir=None):
     """For making a frame[0] version of each char. Currently I still only have them as blanks"""
+    make_used = make_held = False
     if not output_dir:
         directory = f"{os.getcwd()}\\dice_graphics\\BASE\\stills\\"
     else:
         directory = output_dir
     print(f"Making single frames for `{to_make}`")
+    if set_colour and set_colour == "used_die":
+        make_used = True
+        set_colour = button_used
+    elif set_colour and set_colour == "held_die":
+        make_held = True
+        set_colour = button_held
     for char in to_make:
-        get_roll(outgoing="blank", outgoing_colour=None, incoming=char, incoming_colour=set_colour, anim_frames=None, recolour=True, make_frame_zero=directory+char+".png")
+        if make_held:
+            filename = directory+char+"_held.png"
+        elif make_used:
+            filename = directory+char+"_used.png"
+        else:
+            filename = directory+char+".png"
+        get_roll(outgoing="blank", outgoing_colour=None, incoming=char, incoming_colour=set_colour, anim_frames=None, recolour=True, make_frame_zero=filename)
 
 if "__main__" == __name__:
 
