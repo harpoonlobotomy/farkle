@@ -1,11 +1,10 @@
 """simple text-based farkle game
-started April 2026 //  [gui version] v 1.5 // harpoonlobotomy"""
+started April 2026 //  [gui version] v 1.7 // harpoonlobotomy"""
 
 # Command to build a .exe file:
 #   [cd to py file dir first] pyinstaller --onefile --noupx --icon farkle_gui.ico farkle_gui.pyw
 
 # have commented out to_json throughout, add it back later.
-from genericpath import isfile
 from time import sleep
 import random, os
 import FreeSimpleGUI as sg
@@ -51,10 +50,8 @@ class settings:
 
     player1_name:str = None
     player1_col:str = None
-    player1_speed:float = 0.2
     player2_name:str = None
     player2_col:str = None
-    player2_speed:float = 0.2
 
     player_roll_speed:float = 0.2
     computer_roll_speed:float = 0.2
@@ -86,6 +83,7 @@ class theme_data():
     eggplant = "#3E2857",
     navy = "#284157"
     ivory = "#E0DAC5"
+
     theme_dict:dict = {
         "farkle_navy": {'BACKGROUND': navy,
                     'TEXT': "#B08F23",
@@ -102,7 +100,7 @@ class theme_data():
                     "alt_tally_bg": "#332b26",
                     "title_bg": navy,
                     "gold_text": "#ffd768",
-                    'button_mouseover': ("#ecd341", "#4E250D")
+                    'button_mouseover': ("#ecd341", "#2d1f11")
                     },
 
         "farkle_tan": {'BACKGROUND': ivory,
@@ -365,44 +363,20 @@ class dice_gifs:
     def __init__(self):
         self.keys = ["blank", "1", "2", "3", "4", "5", "6", "f", "a", "r", "k", "l", "e", "d", "b", "u", "s", "t"]
         self.player_1_path:str = ""
-        self.player_1_gifs:dict = {}#{{i:""} for i in keys} # each inner dict is {die_val: filepath} // from_x_to_y is always outgoing>incoming, and always stored on the x.
+        #self.player_1_gifs:dict = {}#{{i:""} for i in keys} # each inner dict is {die_val: filepath} // from_x_to_y is always outgoing>incoming, and always stored on the x.
         self.player_1_stills:dict = {}
         self.player_2_path:str = ""
-        self.player_2_gifs:dict = {} # are these filepaths or Image.Image? Probably the former.
+        #self.player_2_gifs:dict = {} # are these filepaths or Image.Image? Probably the former.
         self.player_2_stills:dict = {}
         self.farkle_bust_gifs:dict = {}
         self.farkle_stills:dict = {}
-        self.gif_frames = {} # filename > list of frames. Seems excessively wasteful and bad for memory. But idk what else to do about actually playing the damn gifs.
+        #self.gif_frames = {} # filename > list of frames. Seems excessively wasteful and bad for memory. But idk what else to do about actually playing the damn gifs.
         self.held_still:dict[str:str] = {} # 1: held_1_filepath == dice_graphics\BASE\die_states
         self.used_still:dict[str:str] = {} # 1: used_1_filepath
 
 gif_data = dice_gifs()
 
-def colour_dice_sets():
-    """ Use PIL to colour the dice according to player colours."""
-    for player in (players.player_1, players.player_2):
-        player_dice_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{player.skin}\\"
-        if not os.path.isdir(player_dice_path) or len(os.listdir(player_dice_path)) < 80: # arbitrarily 80 for now to catch anything obviously lacking.
-            print(f"Generating dice images for {player}")
-            from make_dice_images import colour_players_dice
-            colour_players_dice(player_colour=player.skin, force_recolour=True)
-
-    gif_data.player_1_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_1.skin}\\"
-    for key in gif_data.keys:
-        results = list(f"{gif_data.player_1_path}{i}" for i in os.listdir(gif_data.player_1_path) if i.split("_to_")[0] == key and ".gif" in i)
-        gif_data.player_1_gifs[key] = results
-        still = list(f"{gif_data.player_1_path}{i}" for i in os.listdir(gif_data.player_1_path) if i == f"{key}.png")
-        if still:
-            gif_data.player_1_stills[key] = still[0]
-
-    gif_data.player_2_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_2.skin}\\"
-    for key in gif_data.keys:
-        results = list(f"{gif_data.player_2_path}{i}" for i in os.listdir(gif_data.player_2_path) if i.split("_to_")[0] == key  and ".gif" in i) #<<< this used to say 'player_1_path', but the correct colour roll was used. Check how - am I not using this and getting it elsewhere instead?
-        gif_data.player_2_gifs[key] = results
-        still = list(f"{gif_data.player_2_path}{i}" for i in os.listdir(gif_data.player_2_path) if i == f"{key}.png")
-        if still:
-            gif_data.player_2_stills[key] = still
-
+def get_farkle_gifs():
     self_roll_dir = f"{os.getcwd()}\\dice_graphics\\BASE\\self_roll\\"
     full_roll_paths = os.listdir(self_roll_dir)
     stills_dir = f"{os.getcwd()}\\dice_graphics\\BASE\\stills\\"
@@ -423,6 +397,33 @@ def colour_dice_sets():
         else:
             gif_data.used_still[val] = f"{os.getcwd()}\\dice_graphics\\BASE\\die_states\\" + file
 
+def colour_dice_sets():
+
+    """ Use PIL to colour the dice according to player colours."""
+    for player in (players.player_1, players.player_2):
+        player_dice_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{player.skin}\\"
+        if not os.path.isdir(player_dice_path) or len(os.listdir(player_dice_path)) < 80: # arbitrarily 80 for now to catch anything obviously lacking.
+            print(f"Generating dice images for {player}")
+            from make_dice_images import colour_players_dice
+            colour_players_dice(player_colour=player.skin, force_recolour=True, just_stills=True)
+
+    gif_data.player_1_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_1.skin}\\"
+    for key in gif_data.keys:
+        #results = list(f"{gif_data.player_1_path}{i}" for i in os.listdir(gif_data.player_1_path) if i.split("_to_")[0] == key and ".gif" in i)
+        #gif_data.player_1_gifs[key] = results
+        still = list(f"{gif_data.player_1_path}{i}" for i in os.listdir(gif_data.player_1_path) if i == f"{key}.png")
+        if still:
+            gif_data.player_1_stills[key] = still[0]
+
+    gif_data.player_2_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_2.skin}\\"
+    for key in gif_data.keys:
+        #results = list(f"{gif_data.player_2_path}{i}" for i in os.listdir(gif_data.player_2_path) if i.split("_to_")[0] == key  and ".gif" in i) #<<< this used to say 'player_1_path', but the correct colour roll was used. Check how - am I not using this and getting it elsewhere instead?
+        #gif_data.player_2_gifs[key] = results
+        still = list(f"{gif_data.player_2_path}{i}" for i in os.listdir(gif_data.player_2_path) if i == f"{key}.png")
+        if still:
+            gif_data.player_2_stills[key] = still
+
+    get_farkle_gifs()
 
 class die:
     def __init__(self, place_number = 1, skin=None):
@@ -448,6 +449,9 @@ class dice_data:
         self.showing_farkle = False
 
     def init_dice(self):
+
+        if self.dice:
+            self.dice = []
 
         for i in range(1, 7):
             die_inst = die(place_number=i, skin=self.skin)
@@ -511,57 +515,62 @@ class outputter:
     def load_json(self, file_selection):
 
         file = self.file_select(file_selection)
-        print(f"\nfile in load_json: {file}\n")
         if os.path.isfile(file):
             import json
             with open(file, "r") as f:
                 file_data = json.load(f)
         else:
             file_data = {}
-        print(f"File data: {file_data}\n")
+
         return file_data
 
     def output_to_file(self, data, file_selection):
 
         file = self.file_select(file_selection)
-        print(f"\nfile in output_to_file: {file}\n Dumping the following data: {data}")
         import json
         with open(file, "w") as f:
             json.dump(data, f, indent=2)
 
 
     def start_game(self):
-        self.game_data = {self.session_ID: {0: {}}}
-        print(f"Starting game: {self.game_data}")
+        if not self.game_data:
+            self.game_data = {self.session_ID: {0: {}}}
+            print(f"Starting game: {self.game_data}")
+        else:
+            print("Game data already exists, not resetting.")
 
 
-    def output_gamedata(self, player, turn = None, end_game=False):
-        print("Outputting game data")
+    def output_gamedata(self, end_game=False):
+
         if not settings.export_to_file:
             print("Not set to export to file.")
             return
 
         farkle_file = self.load_json("gamedata")
-        print(f"existing farkle file loaded: {farkle_file}")
+
         gamedata = self.game_data.copy()
 
         if farkle_file:
             for entry in farkle_file:
-                print(f"Entry in farkle_file: {entry}")
                 if entry and entry != self.session_ID:
-                    print(f"Entry is not self.session_id: {entry}")
                     gamedata[entry] = farkle_file[entry]
 
         if end_game:
             gamedata[self.session_ID][players.total_games]["game_score"] = {players.current.name: players.current.game_score, players.opponent.name: players.opponent.game_score}
 
-        print(f"Outputting gamedata: {gamedata}")
         self.output_to_file(gamedata, "gamedata")
 
+    def format_dicerolls(self):
 
-    def collect_turndata(self, player:"playerInst", matches=None, dice_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False, initial_roll=False):
+        if not self.turn_data.get(players.total_turns):
+            self.turn_data[players.total_turns] = {"player": players.current.name, "rolls": {}}
 
-        print(f"Collecting turndata: \nMatches: {matches} // die_rolled: {dice_rolled} // roll_score: {roll_score} // bust: {bust} // turn_end: {turn_end} // game_end: {game_end} // initial_roll: {initial_roll}\n")
+        current_data = self.turn_data[players.total_turns]
+        current_data["rolls"][players.current.roll_count] = ({"Dice": list(f"{i.value}" if not i.used else f"{i.value} - USED" for i in dice.dice)}) # only excludes used dice, allows for any that /could/ potentially be selected instead of just those that are.
+
+    def collect_turndata(self, matches=None, dice_rolled=None, roll_score=0, bust=False, turn_end=None, game_end=False):
+
+        #print(f"Collecting turndata: \nMatches: {matches} // die_rolled: {dice_rolled} // roll_score: {roll_score} // bust: {bust} // turn_end: {turn_end} // game_end: {game_end} // initial_roll: {initial_roll}\n")
         """
             {total_turns}: {
                 player: {player.name},
@@ -586,26 +595,27 @@ class outputter:
         if self.turn_data and self.turn_data.get(players.total_turns):
             current_data = self.turn_data[players.total_turns]
         else:
-            self.turn_data[players.total_turns] = {"player": player.name, "initial roll": list(i.value for i in dice.dice), "rolls": {}}
+            #self.turn_data[players.total_turns] = {"player": players.current.name, "initial roll": initial_roll, "rolls": {}}
+            self.turn_data[players.total_turns] = {"player": players.current.name, "rolls": {}} # no need for initial_roll if we get the rolls directly from roll_dice
             current_data = self.turn_data[players.total_turns]
 
         if matches:
-            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in dice_rolled), "Matches": matches, "Roll score": roll_score})
+            current_data["rolls"][players.current.roll_count].update({"Dice taken": matches, "Roll score": roll_score})
 
         if bust:
-            current_data["rolls"][player.roll_count] = ({"Dice": list(i.value for i in dice_rolled), "Matches": "BUST", "Roll score": roll_score})
-            current_data["turn_end_score"] = {0: player.game_score}
+            current_data["rolls"][players.current.roll_count].update({"Dice taken": "BUST", "Roll score": roll_score})
 
-        write_turn_data = False
+        write_turn_data = True
         if turn_end:
-            current_data["turn_end_score"] = {player.turn_score: player.game_score}
+            current_data["rolls"][players.current.roll_count].update({"Ending turn": players.current.turn_score if not bust else 0})
+            current_data["game_score"] = players.current.game_score
             if write_turn_data:
-                self.output_gamedata(player)
+                self.output_gamedata()
 
         self.game_data.setdefault(self.session_ID, {}).setdefault(players.total_games, {}).setdefault(players.total_turns, current_data)
 
         if game_end:
-            self.output_gamedata(player, end_game=True)
+            self.output_gamedata(end_game=True)
 
 to_json = outputter()
 
@@ -641,10 +651,15 @@ def restore_defaults():
         theme_name = theme_name.replace("farkle_", "")
     sg.theme(f'farkle_{theme_name}')
 
+    players.player_1.skin = settings.player1_col
+    players.player_2.skin = settings.player2_col
     settings_dict["user_set"] = {}
 
     to_json.output_to_file(settings_dict, "settings")
 
+    # Need to reset the speed. I'm doing it in a bad way, tricky to get it right for both viewing/editing and actual roll speed. Should redo it.
+    settings.player_roll_speed = settings.player_roll_speed / 1000
+    settings.computer_roll_speed = settings.computer_roll_speed / 1000
     remove_player_colour_gifs()
 
 
@@ -694,6 +709,16 @@ class playerClass:
     def __repr__(self):
         return f"Players: {self.players} Current player: {self.current.name}"
 
+def update_roll_speeds():
+
+    print(f"updating_roll_speeds\nplayer 1 start: {players.player_1.roll_speed} // {players.player_2.roll_speed}")
+    print(f"Existing roll speed: player_roll_speed: {settings.player_roll_speed} // players.player_1.roll_speed: {players.player_1.roll_speed}")
+    players.player_1.roll_speed = settings().player_roll_speed
+    if players.is_singleplayer:
+        players.player_2.roll_speed = settings().computer_roll_speed
+    else:
+        players.player_2.roll_speed = settings().player_roll_speed
+    print(f"updating_roll_speeds\nplayer 1 start: {players.player_1.roll_speed} // {players.player_2.roll_speed}")
 
 def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red", player2_col = "blue"):
 
@@ -704,7 +729,7 @@ def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red"
         player2 = players.default_playstyle
 
     player_1 = playerInst(player1, skin=player1_col)
-    player_1.roll_speed = settings().player_roll_speed
+
     players.players.add(player_1)
     players.player_1 = player_1
     players.current = player_1
@@ -718,10 +743,8 @@ def init_classes(player1 = "player_1", player2 = "player_2", player1_col = "red"
         players.autoplay = player_2
         player_2.playstyle = players.default_playstyle
         player_2.name = player_2.playstyle + "Bot"
-        players.player_2.roll_speed = settings().computer_roll_speed
-    else:
-        players.player_2.roll_speed = settings().player_roll_speed
 
+    update_roll_speeds()
 
     return dict({"player_1": player_1, "player_2": player_2})
 
@@ -770,7 +793,7 @@ def apply_playstyle(player:playerInst, turn_score, available_dice:set[die]):
 
     return turn_score, None
 
-def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get_score=True, test_only=False): # if print_result, send roll to json
+def get_score(player:playerInst=None, autoplay_dice=None, get_score=True, test_only=False, end_turn=False): # if print_result, send roll to json
     """returns held_score (int) and used_dice (set)"""
     if autoplay_dice:
         dice_selection = set(autoplay_dice)
@@ -857,14 +880,17 @@ def get_score(player:playerInst=None, autoplay_dice=None, print_result=True, get
         if updated_dice:
             used_dice = updated_dice
 
-    print("Sending game data to collect_turndata from get_score")
-    to_json.collect_turndata(players.current, matches=matches, dice_rolled=dice_selection, roll_score=held_score)
+    if not end_turn and not test_only:
+        to_json.collect_turndata(matches=matches, dice_rolled=dice_selection, roll_score=held_score)
 
     if not matches and not test_only:
         player.turn_score = 0
 
     if get_score:
         player.turn_score += held_score
+
+    if end_turn and not test_only:
+        to_json.collect_turndata(matches=matches, dice_rolled=dice_selection, roll_score=held_score, turn_end=end_turn)
     return held_score, used_dice, print_output
 
 def clear_held_and_used_dice(reset_val=True):
@@ -895,8 +921,7 @@ def take_roll(player:playerInst):
 
     player.game_score += player.turn_score
     if settings.export_to_file:
-        print("Sending turn_end to collect_turndata from take_roll")
-        to_json.collect_turndata(player, turn_end=True)
+        to_json.collect_turndata(turn_end=True)
 
 
 rules = "\nA `straight` (`1, 2, 3, 4, 5, 6`) is 1500 points\nA `small straight` (either `1, 2, 3, 4, 5` or `2, 3, 4, 5, 6`) is 750 points\n" \
@@ -929,7 +954,7 @@ def make_horz_dots(size1=std_dot_size, size2=std_dot_size, size3=std_dot_size):
     return [[add_dots(size1), add_dots(size2), add_dots(size3)]]
 
 
-def make_window():
+def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]:
 
     def run_gif_anim(gif_filepath, die_key):
 
@@ -942,7 +967,7 @@ def make_window():
             accumImage.tk.call(accumImage, 'copy', deltaImage)
             data.append(accumImage.copy())
             window[die_key].update(data=accumImage)
-
+            #print(f"players.current.roll_speed: {players.current.roll_speed}")
             sleep(players.current.roll_speed)
             window.refresh()
 
@@ -1067,7 +1092,7 @@ def make_window():
 
         print_points_line(string_print="Rolling...")
 
-        force_rolls = False#True
+        force_rolls = False
 
         if prereroll:
             for die_inst in dice.dice:
@@ -1094,11 +1119,20 @@ def make_window():
                 else:
                     roll_animated_die(die_inst)
 
-        print("\nend of roll_dice\n")
+            if reroll_all:
+                die_inst.used = False
+        """ Want to get roll data directly from here, I think."""
+        players.current.roll_count += 1
+        to_json.format_dicerolls()
 
-    def make_button(width:float=std_btn, height:float=std_btn, key_str:str="Pause", tooltip_str = ''):
-        key_upper = key_str.upper()
-        key_formatting = str("-" + key_upper + '-')
+        #print("\nend of roll_dice\n")
+
+    def make_button(width:float=std_btn, height:float=std_btn, key_str:str="Pause", tooltip_str = '', key=None):
+        if not key:
+            key_upper = key_str.upper()
+            key_formatting = str("-" + key_upper + '-')
+        else:
+            key_formatting = key
         #sg.Button("Hello", , use_ttk_buttons=True)
         return sg.Button(key_str, key=key_formatting, mouseover_colors=settings.t.theme_dict[sg.theme()]["button_mouseover"], use_ttk_buttons=True, size=(width,height), font=(f"courier {std_dot_size} bold"), tooltip=tooltip_str if tooltip_str else None)
 
@@ -1119,6 +1153,9 @@ def make_window():
         clear_held_and_used_dice()
         window["print_player_stats"].update(players.scoreline())#f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
 
+        print("Sending to collect_turndata in round_over")
+        to_json.collect_turndata(game_end=True)
+
         def new_game_window():
             new_game_layout = [
                 [sg.Stretch(), sg.Text(f"{winner.name} wins this round with", font=(f"courier {std_dot_size + 2} bold")), sg.Stretch()],
@@ -1138,6 +1175,7 @@ def make_window():
                     dice.showing_farkle=False
                     new_game_window.close()
                     return True
+
                 elif event == "-NEW_GAME_NO-":
                     new_game_window.close()
                     return False
@@ -1159,7 +1197,7 @@ def make_window():
             return "game_over"
 
 
-    def reset_for_new_turn():
+    def reset_for_new_turn(bust=False):
         """Returns "end_game" if not starting a new game, "new_game" if starting a new game."""
         update_tally()
         for d in dice.dice:
@@ -1168,7 +1206,8 @@ def make_window():
         window["tally_table_P1"].update(tally_entries)
         if tally_entries_second:
             window["tally_table_P2"].update(tally_entries_second, visible=True)
-        players.total_turns += 1
+
+        to_json.collect_turndata(dice_rolled=dice.dice, bust=bust, turn_end=True) # only initial if first roll
         print_points_line('')
         print_output_text(f"{players.current.name} ends their turn with {players.current.turn_score} points, for a total score of {players.current.game_score} points.")
         #print_output_text(f"{print_colour.playernm(players.current, "output")} ends their turn with a score of [[{players.current.game_score}]].")
@@ -1186,13 +1225,13 @@ def make_window():
             if round_over(winner=players.current):
                 return "end_game"
 
+        players.total_turns += 1
         players.current, players.opponent = players.opponent, players.current
 
         clear_held_and_used_dice()
 
         # CHANGEME: needs to roll from current value to farkle image.
         window["print_player_stats"].update(players.scoreline())#f"Current player: {players.current.name}\nScores: {players.player_1.name}: {players.player_1.game_score} / {players.player_2.name}: {players.player_2.game_score}")
-        to_json.start_game() # do this here so the first turn is always included regardless of PC or human player starting. Could get messy otherwise.
 
 
     def print_points_line(score='', bust=False, string_print='', print_banked = False):
@@ -1225,9 +1264,8 @@ def make_window():
 
     def take_score_and_end_turn(get_turnscore = True):
         clear_prints()
-        score = str(players.current.turn_score) # score isn't used anywhere here. remove? #TODO
         if get_turnscore:
-            score, _, _ = get_score(players.current, set(i for i in dice.dice if i.held), print_result=True, get_score=True)
+            _, _, _ = get_score(players.current, set(i for i in dice.dice if i.held), get_score=True, end_turn=True)
         take_roll(players.current)
         outcome = reset_for_new_turn() # in take_score_and_end_turn
         return outcome
@@ -1239,17 +1277,22 @@ def make_window():
         if not used_dice:
             print_points_line(string_print=f"{players.current.name} is starting their turn.")
 
-        def start_turn():
+        def start_turn() -> None | str['bust']:
             print_output_text(text='')
             sleep(.2)
-            roll_dice()
-            print("Sending collect_turndata from start_turn for npc")
-            to_json.collect_turndata(players.current, dice_rolled=dice.dice, initial_roll=True) # only initial if first roll
-            #colour_buttons()
-            score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
+            used_dice_count = sum(1 for d in dice.dice if d.used)
+            if used_dice_count == 6:
+                print_output_text(f"{players.current.name} used all their dice; rerolling all.")
+                roll_dice(reroll_all=True)
+                clear_held_and_used_dice(reset_val=False)
+                #roll_animated_die(die_inst, from_used=True)
+            else:
+                roll_dice()
+            _, used_dice, _ = get_score(players.current, set(i for i in dice.dice if not i.used), get_score=False)
             sleep(.3)
             if not used_dice:
                 return "bust"
+            print_points_line(string_print="Selecting dice to hold...")
 
         clear_held_and_used_dice()
 
@@ -1260,7 +1303,7 @@ def make_window():
 
             unused_dice = set(i for i in dice.dice if not i.used)
 
-            has_potential, used_dice, output_text = get_score(player, unused_dice, print_result=False, get_score=False)
+            has_potential, used_dice, output_text = get_score(player, unused_dice, get_score=False)
 
             if not has_potential: # should not get here, as it should get caught by start_turn
                 return "bust", None
@@ -1317,16 +1360,16 @@ def make_window():
             used_dice_count = sum(1 for d in dice.dice if d.used)
 
             if (used_dice_count) == 6:
-                if (player.game_score + player.turn_score >= points_to_win) or player.turn_score > points_to_win/4:
+                if player.game_score + player.turn_score >= points_to_win:
                     print_output_text(f"{players.current.name} used all their dice and is taking the current score.")
                     window.refresh()
                     return "end_turn", None
 
                 #roll_dice(reroll_all=True)
-                print_output_text(f"{players.current.name} used all their dice; rerolling all.")
-                for die_inst in dice.dice:
-                    roll_animated_die(die_inst, from_used=True)
-                clear_held_and_used_dice()
+                #print_output_text(f"{players.current.name} used all their dice; rerolling all.")
+                #for die_inst in dice.dice:
+                    #roll_animated_die(die_inst, from_used=True)
+                #clear_held_and_used_dice()
             else:
                 if (used_dice_count < 4 and (player.game_score + player.turn_score < points_to_win)) or player.turn_score < points_to_win/8:
                     window["output_line"].update("Rolling again.")
@@ -1367,20 +1410,47 @@ def make_window():
 
 
     def rules_window(): #separate window so it can be left open during play if desired
-        rules_panel = [[sg.Canvas(size=(widest_measure,2), pad=2)],
-                    [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_data().theme_dict[sg.theme()]["gold_text"], justification="center")],
-                    [sg.Stretch(), sg.Text(text="[ Note: You can keep the rules open while you play if you like. ]", justification="right")]
-                    ]
+        #rules_panel = [[sg.Canvas(size=(widest_measure,2), pad=2)],
+        #            [sg.Text(text=rules, expand_x=True, expand_y=True, text_color=theme_data().theme_dict[sg.theme()]["gold_text"], justification="center")],
+        #            [sg.Stretch(), sg.Text(text="[ Note: You can keep the rules open while you play if you like. ]", justification="right")]
+        #            ]
 
-        rules_main = [[sg.Column(rules_panel)]]
+        def make_rules_panel():
+            """ right_click_menu=["Open text as plain text file", "Close"] """
+            rules_image = f'{os.getcwd()}\\rules_{settings.game_theme.replace("farkle_", "")}.png'
+            with Image.open(rules_image) as im:
+                size = im.size
+                height = im.height
+                width = im.width
+            graph = sg.Graph(canvas_size=size, graph_top_right=(width, 0), graph_bottom_left=(0, height), background_color=settings.t.theme_dict[sg.theme()]['BACKGROUND'], right_click_menu=[["menu"], ["Open text as plain text file", "Close"]], key="rules_graph", metadata={"image_filepath": rules_image, "height": im.height, "width": im.width})
+            return [graph]
+
+        rules_main = [[sg.Column([make_rules_panel()])]]
 
         rules_layout = [[sg.Frame(title="", key="rules_window", layout=rules_main, font=("courier", std_dot_size, "bold"), relief="groove", pad=(5), border_width=5)]]
 
-        #rules_window = sg.Window(' farkle rules ••', rules_layout, enable_close_attempted_event=True, keep_on_top=True, finalize=True, margins=(10,10), alpha_channel=1.0, grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", icon=png_icon)
-        rules_window = sg.Window(' rules ••', rules_layout, keep_on_top=True, finalize=True, margins=(10,10), grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True, titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon)
+        rules_window = sg.Window(' rules ••', rules_layout, keep_on_top=True, finalize=True, margins=(10,10), grab_anywhere=True, no_titlebar=False, use_custom_titlebar=True,
+                                 titlebar_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], titlebar_text_color=theme_data().theme_dict[sg.theme()]["gold_text"], titlebar_font="courier 10 bold", titlebar_icon=png_icon,
+                                 right_click_menu_background_color=theme_data().theme_dict[sg.theme()]["title_bg"], right_click_menu_selected_colors=settings.t.theme_dict[sg.theme()]["button_mouseover"], right_click_menu_text_color=theme_data().theme_dict[sg.theme()]["gold_text"])
 
-        _, _ = rules_window.read(timeout=1000)
-
+        not_drawn = True
+        timeout_rate = 50
+        while True:
+            event, _ = rules_window.read(timeout=timeout_rate)
+            if not_drawn:
+                graph = rules_window["rules_graph"] # type: sg.Graph
+                graph.draw_image(filename=graph.metadata["image_filepath"], location=(0,0))
+                not_drawn = False
+                timeout_rate = 1000
+            if event == "Open text as plain text file":
+                import subprocess
+                osCommandString = "notepad.exe RULES.txt"
+                subprocess.Popen(osCommandString)
+            if event == "Close":
+                rules_window.close()
+                break
+            if rules_window.is_closed():
+                break
 
     def clear_print_lines_before_close():
         sleep(.8)
@@ -1448,7 +1518,8 @@ def make_window():
     roll_take_and_output_print =      [
                      [
                      sg.Stretch(), sg.Column(layout=make_horz_dots(size1=std_dot_size, size2=int(std_dot_size)+2, size3=int(std_dot_size)+4), pad=0),
-                     make_button(width=std_btn, height=1, key_str="Roll", tooltip_str=" Bank the score from the selected dice, and roll the remaining dice again - try not to bust! \n\n If you bust, the banked score will not be added to your game score and your turn will end. "), make_button(width=std_btn, height=1, key_str="Take", tooltip_str="Add the banked score from this round (if any) and the score from the selected dice to your final score, and end your turn."),
+                     # changed 'take' to 'end turn' for clarity.
+                     make_button(width=std_btn, height=1, key_str="Roll", tooltip_str=" Bank the score from the selected dice, and roll the remaining dice again - try not to bust! \n\n If you bust, the banked score will not be added to your game score and your turn will end. "), make_button(width=std_btn, height=1, key="-TAKE-", key_str="End Turn", tooltip_str="Add the banked score from this round (if any) and the score from the selected dice to your final score, and end your turn."),
                      sg.Column(layout=make_horz_dots(size1=int(std_dot_size)+4, size2=int(std_dot_size)+2, size3=std_dot_size)),
                      sg.Stretch()],
 
@@ -1480,6 +1551,7 @@ def make_window():
     dice.showing_farkle=False
     opened1 = False
     window['-SEC1-'].update(visible=False)
+    to_json.start_game()
 
     """
     All print lines (in order of appearance):
@@ -1502,9 +1574,10 @@ def make_window():
             return "exit", None
 
         if not round_started and not dice.showing_farkle:
-            print("not round_started and not dice.showing_farkle")
+            print("not round started and not dice.showing_farkle")
             roll_animated_die(farkle=True)
             dice.showing_farkle=True
+            print("Ended roll_animated from not round_started and not dice.showing_farkle")
 
         used_dice = None
         if players.is_singleplayer and players.current == players.player_2:
@@ -1535,13 +1608,12 @@ def make_window():
                     players.current.turn_score = 0
                     if check_for_close_event(autoplay_loop_event): # added a number of these so it has different opportunities to notice and exit to limit the user wait after clicking close.
                         return "exit", None
-                    reset_for_new_turn() # ln 1664 if player2 busts
+                    reset_for_new_turn(bust=True) # ln 1664 if player2 busts
                     round_started = False
                 elif outcome == "game_won":
                     round_over(players.current)
 
         if not round_started and (event == "-ROLL-" or settings.roll_on_start):
-
             autoplay_loop_event, values = window.read(timeout=100)
 
             roll_animated_die(farkle=True)
@@ -1552,9 +1624,8 @@ def make_window():
                 return "exit", None
             print_points_line(string_print='', print_banked=False)
             roll_dice()
-            print("Sending initial roll to collect_turndata from player1 first turn")
-            to_json.collect_turndata(players.current, dice_rolled=dice.dice, initial_roll=True)
-            score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), print_result=False, get_score=False)
+            to_json.collect_turndata(dice_rolled=dice.dice) # only initial if first roll
+            score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice), get_score=False)
             round_started = True
             print_output_text(text=output_str)
             if not used_dice:
@@ -1563,8 +1634,9 @@ def make_window():
                 if check_for_close_event(autoplay_loop_event):
                     return "exit", None
                 sleep(.8)
-                reset_for_new_turn() #line 1692 if bust out the gate
+                reset_for_new_turn(bust=True) #line 1692 if bust out the gate
                 round_started = False
+            print_points_line(string_print="Select dice to hold...")
 
         if event and event.startswith('-OPEN SEC1-'):
             opened1 = not opened1
@@ -1578,7 +1650,7 @@ def make_window():
             if die_inst.used:
                 continue
             hold_dice(die_inst)
-            score, _, output_str = get_score(players.current, set(i for i in dice.dice if i.held), print_result=False, get_score=False, test_only=True)
+            score, _, output_str = get_score(players.current, set(i for i in dice.dice if i.held), get_score=False, test_only=True)
             print_output_text(text=output_str)
             print_points_line(score, print_banked=True)
 
@@ -1587,7 +1659,7 @@ def make_window():
             if not held_dice:
                 print_output_text("You must hold at least one die before rolling.")
             else:
-                preroll_score, new_used_dice, _ = get_score(players.current, held_dice, print_result=False, get_score=False)
+                preroll_score, new_used_dice, _ = get_score(players.current, held_dice, get_score=False)
                 if preroll_score == 0:
                     print_output_text("You must hold at least one die viable before rolling.")
                     continue
@@ -1602,13 +1674,12 @@ def make_window():
                 used_dice = set(i for i in dice.dice if i.used)
                 if used_dice and len(used_dice) == 6:
                     print_output_text(f"{players.current.name} used all their dice; rerolling all.")
-                    #colour_buttons()
                     roll_dice(reroll_all=True)
                     clear_held_and_used_dice(reset_val=False)
                 else:
                     roll_dice(used_dice)
 
-                score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), print_result=False, get_score=False)
+                score, used_dice, output_str = get_score(players.current, set(i for i in dice.dice if not i.used), get_score=False)
                 print_output_text(text=output_str)
                 if check_for_close_event(event):
                     return "exit", None
@@ -1616,7 +1687,7 @@ def make_window():
                     roll_to_bust()
                     print_points_line(bust=True)
                     sleep(.8)
-                    reset_for_new_turn() # line 1746 if player busts
+                    reset_for_new_turn(bust=True) # line 1746 if player busts
                     round_started = False
                 else:
                     players.current.turn_score += preroll_score
@@ -1692,12 +1763,11 @@ def settings_window():
         [sg.Ok(key=f"set_input_{pc_or_comp}", bind_return_key=False), sg.Cancel(key=f"cancel_input_{pc_or_comp}")]
         ]
 
-    change_speed_buttons = [
+    change_speed_buttons = [[sg.VStretch()],
         [sg.Button(button_text=f"Change player roll speed ({settings.player_roll_speed*100})", key="change_play_roll"), sg.Button(button_text=f"Change computer roll speed ({settings.computer_roll_speed*100})", key="change_comp_roll")],
         ]
 
     advanced = [
-        [sg.VStretch()],
         [settings_collapse(layout=change_speed_buttons, key="speed_buttons", visible=True)],
         [settings_collapse(layout = set_speed("player_roll_speed"), key="player_roll_spd"), settings_collapse(layout = set_speed("computer_roll_speed"), key="comp_roll_spd")],
         [sg.VStretch()],
@@ -1841,7 +1911,6 @@ def settings_window():
                     settings_window[style].update(disabled=True if event == style else False)
 
             if event.startswith("panel_"):
-# panels:  '-MODE-', '-NAMES-', '-THEMES-', '-SEC1-', "-ADVANCED-"
                 if event == "panel_advanced":
                     settings_window["start_roll_immediately"].update(button_color=settings_window["start_roll_immediately"].DisabledButtonColor if not settings_window["start_roll_immediately"].metadata else settings.t.theme_dict[sg.theme()]["BUTTON"])
                     settings_window["export_to_file"].update(button_color=settings_window["export_to_file"].DisabledButtonColor if not settings_window["export_to_file"].metadata else settings.t.theme_dict[sg.theme()]["BUTTON"])
@@ -1874,19 +1943,13 @@ def settings_window():
                         settings_window["choose_arcade"].update(disabled=True if "arcade" in sg.theme() else False)
 
             pc_or_comp = "player_roll_speed", "computer_roll_speed"
-            "speed_text_{pc_or_comp}"
-            "speed_input_{pc_or_comp}"
-            "set_input_{pc_or_comp}"
-            "cancel_input_{pc_or_comp}"
-            "test_die_anim_{pc_or_comp}"
 
             if "player_roll_speed" in event or "computer_roll_speed" in event:
                 if "player_roll_speed" in event:
                     pc_or_comp = "player_roll_speed"
                 else:
                     pc_or_comp = "computer_roll_speed"
-            #if event in ["test_die_anim", "set_input_player_roll_speed", "set_input_computer_roll_speed", "cancel_input", "cancel_input1", "player_roll_spd", "change_play_roll", "speed_input", "player_roll_speed", "computer_roll_speed"]:
-                print(f"EVENT FROM THIS: {event} // values: {values}")
+                #print(f"EVENT FROM THIS: {event} // values: {values}")
                 if event == f"cancel_input_{pc_or_comp}":
                     settings_window["comp_roll_spd"].update(visible = False)
                     settings_window["player_roll_spd"].update(visible = False)
@@ -1896,8 +1959,6 @@ def settings_window():
                         settings_window["change_comp_roll"].update(f"Change computer roll speed ({settings.computer_roll_speed*100})")
 
                     settings_window["speed_buttons"].update(visible = True)
-        #settings.player_roll_speed = values[f'speed_input_{pc_or_comp}']
-        #settings.computer_roll_speed = values[f'speed_input_{pc_or_comp}']
                 if event == f"set_input_{pc_or_comp}":
                     settings_dict[f"set_input_{pc_or_comp}"] = values[f"speed_input_{pc_or_comp}"]
                     settings_window[f"speed_text_{pc_or_comp}"].update(f"The current speed is `{values[f'speed_input_{pc_or_comp}']}`.\nClick the die to have it animate at this speed.")
@@ -1913,7 +1974,7 @@ def settings_window():
                 if event == f"test_die_anim_{pc_or_comp}":
                     settings_dict[f"set_input_{pc_or_comp}"] = values[f"speed_input_{pc_or_comp}"]
                     settings_window[f"speed_text_{pc_or_comp}"].update(f"The current speed is `{values[f'speed_input_{pc_or_comp}']}`.\nClick the die to have it animate at this speed.")
-                    print("Animating gif")
+                    #print("Animating gif")
                     image = Image.open(test_die_path)
                     frames = image.n_frames
                     accumImage = sg.tk.PhotoImage(file=test_die_path, format=f'gif -index 0')
@@ -1927,7 +1988,6 @@ def settings_window():
                         settings_window.refresh()
 
             if event == "change_play_roll" or event == "player_roll_spd":
-                print(f"EVENT: {event}")
                 if settings_window["player_roll_spd"].visible:
                     settings_window["player_roll_spd"].update(visible = False)
                     settings_window["speed_buttons"].update(visible = True)
@@ -1958,8 +2018,6 @@ def settings_window():
                 print(f'settings_window["start_roll_immediately"].metadata: {settings_window["start_roll_immediately"].metadata}')
                 settings_dict["start_roll_immediately"] = state
                 settings_window["start_roll_immediately"].update("Not starting rolling immediately" if not state else "Automatically start the first roll", button_color=settings_window["start_roll_immediately"].DisabledButtonColor if not state else settings.t.theme_dict[sg.theme()]["BUTTON"])
-    # "Do not start rolling immediately" if settings.roll_on_start else "Automatically start the first roll", key="start_roll_immediately", tooltip_str="If turned off, the game won't start until the player clicks 'Roll'."
-    #   key_str="Do not start rolling immediately" if settings.roll_on_start else "Automatically start the first roll"
 
             if event == "export_to_file":
                 print(f"event: {event} // value; {values}")
@@ -1968,8 +2026,6 @@ def settings_window():
                 print(f'settings_window["export_to_file"].metadata: {settings_window["export_to_file"].metadata}')
                 settings_dict["export_to_file"] = state
                 settings_window["export_to_file"].update("Not exporting play data to file" if not state else "Exporting play data to file", button_color=settings_window["export_to_file"].DisabledButtonColor if not state else settings.t.theme_dict[sg.theme()]["BUTTON"])
-    #   "Not exporting play data to file" if settings.export_to_file else "Exporting play data to file"
-
 
             if event == "choose_single":
                 settings_dict["set_singleplayer"] = True
@@ -1987,13 +2043,11 @@ def settings_window():
                 settings_window["choose_navy"].update(disabled=False)
                 settings_window["choose_arcade"].update(disabled=False)
 
-
             if event == "choose_navy":
                 settings_dict["set_theme"] = "farkle_navy"
                 settings_window["choose_tan"].update(disabled=False)
                 settings_window["choose_navy"].update(disabled=True)
                 settings_window["choose_arcade"].update(disabled=False)
-
 
             if event == "choose_arcade":
                 settings_dict["set_theme"] = "farkle_arcade"
@@ -2007,10 +2061,10 @@ def settings_window():
 
             if event == "leave_no_save":
                 settings_window.close()
-                return "no_save" # just here while I'm forcing settings window, remove after.
+                return "no_save"
 
 
-def update_json(update_data:dict):
+def update_settings_json(update_data:dict):
 
     """updates JSON with provided dict. Only the keys provided will be updated, and only if the value is different to the current value."""
     json_data = to_json.load_json("settings")
@@ -2029,17 +2083,17 @@ def apply_settings(settings_dict):
 
     for action, data in settings_dict.items():
 
-
-        if action == "set_input_computer_roll_speed":
-            print("set computer roll speed")
-            settings.computer_roll_speed = data
-            update_json_dict["computer_roll_speed"] = int(float(data)*10)
-            print(f'In json dict: {update_json_dict["computer_roll_speed"]}')
-        if action == "set_input_player_roll_speed":
-            print("set player roll speed")
-            settings.player_roll_speed = data
-            update_json_dict["player_roll_speed"] = int(float(data)*10)
-            print(f'In json dict: {update_json_dict["player_roll_speed"]}')
+        if "roll_speed" in action:
+            print(f"Roll speed given: {data}")
+            print(f"Existing roll speed: player_roll_speed: {settings.player_roll_speed} // players.player_1.roll_speed: {players.player_1.roll_speed}")
+            if action == "set_input_computer_roll_speed":
+                settings.computer_roll_speed = float(data)/100
+                update_json_dict["computer_roll_speed"] = int(float(data)*10)
+            if action == "set_input_player_roll_speed":
+                settings.player_roll_speed = float(data)/100
+                update_json_dict["player_roll_speed"] = int(float(data)*10)
+            print(f"New roll speed: player_roll_speed: {settings.player_roll_speed} // players.player_1.roll_speed: {players.player_1.roll_speed}")
+            update_roll_speeds()
 
         if action == 'export_to_file':
             print(f"action == export to file, data: {data}")
@@ -2059,7 +2113,6 @@ def apply_settings(settings_dict):
                 init_classes(players.player_1.name, '', player1_col = "blue", player2_col = "red")
 
         if action == "change_names":
-            #print(f"DATA for change names: {data}")
             for name in data:
                 if data[name]:
                     if "_name" in name:
@@ -2076,16 +2129,23 @@ def apply_settings(settings_dict):
                     if "col_text" in name:
                         player_num = name.split("_")[1]
                         colour = data[name]
+                        colour_changed = False
                         if "colour: " in colour:
                             colour = colour.split("colour: ")[1]
                         if player_num == "1":
                             if players.player_1.skin != colour:
                                 players.player_1.skin = colour
                                 update_json_dict["player1_col"] = colour
+                                gif_data.player_1_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_1.skin}\\"
+                                colour_changed = True
                         elif player_num == "2":
                             if players.player_2.skin != colour:
                                 players.player_2.skin = colour
                                 update_json_dict["player2_col"] = colour
+                                gif_data.player_2_path = f"{os.getcwd()}\\dice_graphics\\num_by_colour\\{players.player_2.skin}\\"
+                                colour_changed = True
+                        if colour_changed:
+                            colour_dice_sets()
 
         if action == "set_theme":
             if data != sg.theme():
@@ -2101,7 +2161,7 @@ def apply_settings(settings_dict):
                     players.player_2.name = f"{data}Bot"
 
     if update_json_dict:
-        update_json(update_json_dict)
+        update_settings_json(update_json_dict)
     init_settings()
 
 def remove_random_rolls_on_close():
@@ -2131,6 +2191,7 @@ def main_gui():
     force_settings = False
 
     while True:
+
         if force_settings:
             settings_dict = settings_window()
             if settings_dict and settings_dict == "no_save":
@@ -2142,9 +2203,11 @@ def main_gui():
                 break
             elif use_settings:
                 settings_dict = settings_window()
-                if settings_dict and not isinstance(settings_dict, str): # added this in case I forget to remove the no_save line from settings window testing.
+                if settings_dict and not isinstance(settings_dict, str):
                     apply_settings(settings_dict)
 
     remove_random_rolls_on_close()
+    from make_dice_images import o
+    o.save_data()
 
 main_gui()

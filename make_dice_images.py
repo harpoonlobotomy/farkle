@@ -1,22 +1,3 @@
-""" I want to automate the actual dice animation making just a little. Right now I'm aligning the dice faces by hand and it's... a lot.
-
-What I need is to have the dice face blanks, + the numbers, and to have it place and output the resulting images automatically. Which really shouldn't be all that hard, I think.
-
-Around frame 4/5 I can do the switch between numbers. Only a few pixels of the incoming number are visible, I think it'd work.
-So i need each number 'incoming' and 'outcoming', then I should be able to say '3 out, 5 in' and have 3 roll away to show 5. I think."""
-
-"""
-So, at the start of a run and/or when player colours are changed:
-I need to generate the blank frames of incoming in the correct colours for each player die set. Save 'em in colour-identified folders so I don't regen each time. I need:
-    blank > number
-    number > blank # for rerolling
-    blank > farkle
-    blank > bust
-^ reason for the blanks is largely so I avoid having to regenerate each number going to each of (farkle, bust) for each player for each colour. It might be better though. Not sure. Stick with this for now, especially as I've not actually got it properly animating in situ yet.
-
-farkle>bust will never happen as it has to roll first. Same for the inverse as bust always leads to a new turn roll, not a start screen.
-"""
-
 
 """
 WHAT IS WHERE:
@@ -34,16 +15,18 @@ Currently the plan is to make gifs on the fly, but perhaps playing the gifs one 
 
 """
 
-from PIL import Image, ImageOps, ImageChops
+from PIL import Image, ImageChops
 import os
 
-frame_path = f"{os.getcwd()}\\dice_graphics\\blanks\\frame_blanks\\"
-frame_blanks = os.listdir(frame_path)
-chars_path = f"{os.getcwd()}\\dice_graphics\\blanks\\chars_blanks\\"
-chars_blanks = os.listdir(chars_path)
+output_dir = f"{os.getcwd()}\\dice_graphics\\"
 
-frame_mask_dir = f"{os.getcwd()}\\dice_graphics\\blanks\\face_masks\\"
-frame_masks = os.listdir(frame_mask_dir)
+frame_dir = f"{output_dir}blanks\\frame_blanks\\"
+frame_blanks = os.listdir(frame_dir)
+chars_dir = f"{output_dir}blanks\\chars_blanks\\"
+chars_blanks = os.listdir(chars_dir)
+
+frame_mask_dir = f"{output_dir}blanks\\face_masks\\"
+frame_mask_files = os.listdir(frame_mask_dir)
 
 standard_dice_colour = "#11D49A"
 bust_colour = "#330303"
@@ -51,12 +34,18 @@ bust_colour = "#330303"
 button_held = "#F8DC5E"
 button_used = "#666354"
 
-"""
-open frame blank
-make version of that frame blank with each Char blank on it. Save accordingly.
-"""
+settings_file = f"{os.getcwd()}\\farkle_settings.json"
+import json
+with open(settings_file) as f:
+    settings = json.load(f)
+effect_layers = settings["user_set"]["effect_layers"] if settings["user_set"].get("effect_layers") else settings["defaults"]["effect_layers"]
 
-output_dir = f"{os.getcwd()}\\dice_graphics\\"
+effect_dir = f"{output_dir}effect_layers\\"
+if not os.path.isdir(effect_dir):
+    print("No effect dir.")
+    effect_folders = []
+else:
+    effect_folders = os.listdir(effect_dir) # effect_folders = head folder holding any die face effects. Each folder must contain 1-11, potentially with a '0' though it's not currently used outside of manual full loops with start + completion.
 
 movement = {
     "outgoing": { ## how many pixels down on 7 from 0 (final y position, not additive per frame.)
@@ -80,7 +69,7 @@ movement = {
         }
 }
 
-fark_colours = { # for farkle_arcade
+fark_colours = {
             "f": "#db270d",
             "a": "#ffb302",
             "r": "#71b335",
@@ -89,8 +78,26 @@ fark_colours = { # for farkle_arcade
             "e": "#ae3aad"
         }
 
+class output_used_filepaths:
+    def __init__(self):
+        self.used_filepaths:set = set()
+
+    def update(self, path):
+        self.used_filepaths.add(path)
+
+    def save_data(self):
+        output_file = f"{os.getcwd()}\\used_filepaths.json"
+        filepaths = list(self.used_filepaths)
+        import json
+        with open(output_file, "w+") as f:
+            json.dump(filepaths, f, indent=4)
+
+o = output_used_filepaths()
 
 def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour=None, anim_frames=[], recolour=None, make_frame_zero=False):
+
+    do_update=True
+    add_effect_layer=False
 
     if outgoing == "blank":
         outgoing_path = None
@@ -118,7 +125,6 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
     else:
         outgoing_colour = outgoing_colour if outgoing_colour else recolour if recolour and isinstance(recolour, str) else standard_dice_colour
 
-    #print(f"Outgoing colour; {outgoing_colour} / used_colour: {button_used}")
     outgoing_y_pos = None
     incoming_y_pos = None
     for filepath in sorted(frame_blanks):
@@ -126,36 +132,41 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
             continue
         if make_frame_zero and filepath != "11.png": # frame zero is actually frame 11 but w/e, it'll work
             continue
-        with Image.open(frame_path + filepath) as f_blank:
-            #print(f"f_blank open: {filepath}")
+        with Image.open(frame_dir + filepath) as f_blank:
+            if do_update:
+                o.update(frame_dir + filepath)
             frame_no = filepath.replace(".png", "")
 
             new = Image.new(mode="RGBA", size=f_blank.size)
             new.paste(f_blank)
             if outgoing_path:
-                with Image.open(chars_path + outgoing_path) as out_img:
+                if do_update:
+                    o.update(chars_dir + outgoing_path)
+
+                with Image.open(chars_dir + outgoing_path) as out_img:
                     if frame_no in movement["outgoing"]:
                         outgoing_y_pos = movement["outgoing"][frame_no]
                         new.alpha_composite(out_img, (0,outgoing_y_pos))
 
             if incoming_path:
-                with Image.open(chars_path + incoming_path) as in_img:
+                if do_update:
+                    o.update(chars_dir + incoming_path)
+
+                with Image.open(chars_dir + incoming_path) as in_img:
                     if frame_no in movement["incoming"]:
                         incoming_y_pos = movement["incoming"][frame_no]
-                        #print(f"incoming for frame no {frame_no}")
                         new.alpha_composite(in_img, (0,incoming_y_pos))
 
-            #if not outgoing_path and not incoming_path:
-                #print(f"NOT OUT OR IN: {frame_no}") # just means it's blank entirely. Not a problem. Don't know why I need this...
-
             if recolour or (incoming_colour and outgoing_colour):
-                frame_mask = list(i for i in frame_masks if  i == filepath)
+                frame_mask = list(i for i in frame_mask_files if  i == filepath)
                 if frame_mask:
                     frame_mask = frame_mask[0]
+                    if do_update:
+                        o.update(frame_mask_dir + frame_mask)
                 else:
-                    print(f"No frame mask found for {filepath}. All frame masks: \n{frame_masks}")
+                    print(f"No frame mask found for {filepath}. All frame masks: \n{frame_mask_files}")
 
-                new = recolour_frame(new, outgoing_colour, incoming_colour, frame_mask_dir + frame_mask, frame_no)
+                new = recolour_frame(new, outgoing_colour, incoming_colour, frame_mask_dir + frame_mask)
 
             if make_frame_zero:
                 new.save(make_frame_zero)
@@ -164,7 +175,7 @@ def get_roll(outgoing=None, outgoing_colour=None, incoming=None, incoming_colour
     return anim_frames
 
 
-def recolour_frame(image:Image.Image, outgoing_colour="blue", incoming_colour="red", frame_mask=None, frame_no="06"):
+def recolour_frame(image:Image.Image, outgoing_colour="blue", incoming_colour="red", frame_mask=None):
     """ Now allows str('None') as incoming/outgoing colour, to allow that portion to remain unchanged from the original."""
 
     image=image.convert("RGBA")
@@ -172,9 +183,7 @@ def recolour_frame(image:Image.Image, outgoing_colour="blue", incoming_colour="r
         new_image = image
     else:
         square = Image.new("RGBA", size=(100, 100), color=outgoing_colour)
-        #square.show()
         new_image = ImageChops.overlay(image, square)
-        #new_image.show()
         if outgoing_colour == incoming_colour:
             image
             new_image = new_image.convert("RGB")
@@ -195,7 +204,7 @@ def recolour_frame(image:Image.Image, outgoing_colour="blue", incoming_colour="r
 
     return new_image
 
-def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=True, blank_before_incoming=True, end_roll=True, output_name=None, start_from_blank=False, end_with_blank=False, recolour=None, continue_with_list=False, subfolder="autogen\\full_roll", incoming_colour=None, outgoing_colour=None): # maybe set blank_before_incoming if char in FARKLE else false
+def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=True, blank_before_incoming=True, end_roll=True, output_name=None, start_from_blank=False, end_with_blank=False, recolour=None, continue_with_list=False, subfolder="BASE\\from_x_to_y\\", incoming_colour=None, outgoing_colour=None): # maybe set blank_before_incoming if char in FARKLE else false
 
     if not anim_frames:
         anim_frames = []
@@ -227,11 +236,7 @@ def transition_to_from(anim_frames, outgoing_char, incoming_char, start_roll=Tru
     if not os.path.isdir(f"{output_dir}{subfolder}\\"):
         os.makedirs(f"{output_dir}{subfolder}\\")
     anim_frames[0].save(output_dir + f"{subfolder}\\{output_name}.gif", append_images=anim_frames[1:], save_all=True, duration=50, optimise=False, loop=0)
-    return [] # <-- always returning anim_frames ruins the farkle intro rolls and potentially other things. Makes them jumpy and bad.
-
-#transition_to_from(outgoing_char="3", incoming_char="f", start_roll=True, blank_before_incoming=True)
-
-"""preroll anim: f:1, a:2 etc"""
+    return []
 
 fark_dict = {
     "f":"1",
@@ -242,24 +247,24 @@ fark_dict = {
     "e":"6",
 }
 
-#for k, v in fark_dict.items():
-#    transition_to_from([], k, v, start_roll=True, blank_before_incoming=False, end_roll=False, output_name = f"{k}_to_{v}", start_from_blank=True, recolour="farkle", continue_with_list=False)
+def make_farkle_chain():
 
-make_farkle_chain = False#True
+    make_farkle_chain = False#True
 
-if make_farkle_chain:
-    anim_frames = []
-    count = 0
-    for k, char in fark_dict.items(): # through the whole lot
-        if count:
-            for _ in range(count):
-                anim_frames = get_roll(outgoing="blank", incoming="blank", anim_frames=anim_frames, recolour="farkle")
+    if make_farkle_chain:
+        anim_frames = []
+        count = 0
+        for k, char in fark_dict.items(): # through the whole lot
+            if count:
+                for _ in range(count):
+                    anim_frames = get_roll(outgoing="blank", incoming="blank", anim_frames=anim_frames, recolour="farkle")
 
-        anim_frames = transition_to_from(anim_frames, "blank", k, start_roll=True, blank_before_incoming=False, end_roll=True, output_name = f"farkle_chain_{k}_{char}", start_from_blank=True, end_with_blank=False, recolour="farkle", continue_with_list=False)
-        count += 1
+            anim_frames = transition_to_from(anim_frames, "blank", k, start_roll=True, blank_before_incoming=False, end_roll=True, output_name = f"farkle_chain_{k}_{char}", start_from_blank=True, end_with_blank=False, recolour="farkle", continue_with_list=False)
+            count += 1
 
 
 def make_combination_image(make_farkle = False, make_bust=False, make_other=None, make_other_colour = None, other_subfolder=None, end_blank=True, filename="temp", anim_frames=None): ## redo this to use a dict instead of listing them all out like this.
+
     def make_from_list(incoming_list, output_path, colour=None, subfolder=None, is_other=False, end_blank=True, anim_frames=None):
         ## For full roll for each letter before changing, set end_roll=True.
         if not anim_frames:
@@ -281,22 +286,10 @@ def make_combination_image(make_farkle = False, make_bust=False, make_other=None
         make_from_list(bust_list, output_path = "bust_all_in_one", colour="bust")
     if make_other:
         make_from_list(make_other, output_path = filename, colour=make_other_colour, subfolder = other_subfolder, end_blank=False, anim_frames=anim_frames) # is_other=True to add blank to start
-"""
-make number > bust
-"""
 
-"""
-random roll combination:
-start w blank, then get randoms from BASE\\from_x_to_y, then add final val from BASE\\self_roll
-
-Also need player-colour blank > farkle-coloured blank and farkle-blank > player-colour blank
-"""
 
 def apply_colour_to_gif(base_image, outgoing_colour, incoming_colour, target_path):
 
-    """ Oh shit. I just realised this exists:
-    multiply(image1: Image.Image, image2: Image.Image) -> Image.Image:
-    in ImageChops. Instead of just colorising I can multiply, overlay, etc. This is what I needed. Good to know."""
     def modify_gif(im:Image.Image, outgoing_colour, incoming_colour, target_path):
 
         new = []
@@ -306,7 +299,7 @@ def apply_colour_to_gif(base_image, outgoing_colour, incoming_colour, target_pat
                 if outgoing_colour == incoming_colour:
                     frame_mask=None
                 else:
-                    mask_no = frame_num+1 # not exactly sure why. Oh, I guess the 'perfect' frame is frame 11? But it's not... but this works, so... idk.
+                    mask_no = frame_num+1
                     if mask_no == 11:
                         mask_no = 0
                     if len(str(mask_no)) == 1:
@@ -314,11 +307,11 @@ def apply_colour_to_gif(base_image, outgoing_colour, incoming_colour, target_pat
                     else:
                         str_num = f"{mask_no}.png"
 
-                    frame_mask = list(i for i in frame_masks if i == str_num)
+                    frame_mask = list(i for i in frame_mask_files if i == str_num)
                 if frame_mask:
                     frame_mask = frame_mask_dir + frame_mask[0]
 
-                new_frame = recolour_frame(im, outgoing_colour, incoming_colour, frame_mask=frame_mask, frame_no=frame_num)
+                new_frame = recolour_frame(im, outgoing_colour, incoming_colour, frame_mask=frame_mask)
                 new.append(new_frame)
             except Exception as e:
                 print(f"Failed to seek for {frame_num} from n_frames: {im.n_frames}: {e}")
@@ -331,38 +324,27 @@ def apply_colour_to_gif(base_image, outgoing_colour, incoming_colour, target_pat
         if "gif" in base_image:
             modify_gif(im, outgoing_colour, incoming_colour, target_path)
 
-def colour_players_dice(player_colour, force_recolour=False):
-    """
-    all number combinations from from_x_to_y
-    number > bust
-    Also need player-colour blank > farkle-coloured blank and farkle-blank > player-colour blank
-    """
+def colour_players_dice(player_colour, force_recolour=False, just_stills=False):
 
-    from_x_to_y_filenames = os.listdir(output_dir+f"BASE\\from_x_to_y")
+    #from_x_to_y_filenames = os.listdir(output_dir+f"BASE\\from_x_to_y")
     output_path = output_dir + f"num_by_colour\\{player_colour}\\"
-
 
     if not os.path.isdir(output_path):
         os.makedirs(output_path)
     elif not force_recolour:
-        print(f"Directory for {output_path} already exists. Stopping. Set 'force_recolour' to force re-creation")
+        print(f"Directory for {output_path} already exists. Stopping. Set 'force_recolour' to force re-creation - can also be accessed by resetting to defaults in ingame settings.")
         return output_path
 
     make_single_frames(to_make="123456", set_colour=player_colour, output_dir=output_path)
 
-    for path in from_x_to_y_filenames:
-    ###def colour_player(player_no, player_colour):
-        output_path = output_dir + f"num_by_colour\\{player_colour}\\"
-        apply_colour_to_gif(output_dir+f"BASE\\from_x_to_y\\" + path, player_colour, player_colour, output_path + f"{path}")
+    make_hold_and_used = False
+    if make_hold_and_used:
+        held_and_used()
 
+    if just_stills: # Is always true for the moment, I don't use the blank_to_x anims.
+        return
 
-        #with Image.open(path) as im:
-            #frames = im.p_frames
-            #im = recolour_frame(im, outgoing_colour=player_colour, incoming_colour=player_colour, frame_mask=None)
-            #im.save(output_path + path)
-
-
-    for k in fark_dict: # through the whole lot
+    for k in fark_dict:
         transition_to_from([], "blank", k, start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"blank_to_{k}", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=False, incoming_colour=fark_colours[k], outgoing_colour=player_colour, subfolder=f"num_by_colour\\{player_colour}\\")
         transition_to_from([], k, "blank", start_roll=False, blank_before_incoming=False, end_roll=False, output_name = f"{k}_to_blank", start_from_blank=False, end_with_blank=False, recolour="farkle", continue_with_list=False, incoming_colour=player_colour, outgoing_colour=fark_colours[k], subfolder=f"num_by_colour\\{player_colour}\\")
 
@@ -373,7 +355,6 @@ def colour_players_dice(player_colour, force_recolour=False):
             apply_colour_to_gif(output_dir + f"BASE\\bust\\" + file, "None", player_colour, output_path + file)
         else:
             apply_colour_to_gif(output_dir + f"BASE\\bust\\" + file, player_colour, "None", output_path + file)
-
 
     blank_frame = f"{os.getcwd()}\\dice_graphics\\BASE\\blank\\blank_frame.gif"
     for letter, f_colour in fark_colours.items():
@@ -542,31 +523,12 @@ def make_all_die_combinations():
     # make grey frame-only for betweens
     blank_frame = []
     for filepath in sorted(frame_blanks):
-        with Image.open(frame_path + filepath) as f_blank:
+        with Image.open(frame_dir + filepath) as f_blank:
             new = Image.new(mode="RGBA", size=f_blank.size)
             new.paste(f_blank)
             blank_frame.append(new)
     blank_frame[0].save(output_dir + "BASE\\blank\\blank_frame.gif", append_images=blank_frame[1:], save_all=True, duration=50, optimise=False, loop=0)
 
-
-def compile_die(faces = "5a321"):
-    """
-    WHERE TO FIND THEM:
-    "BASE\\from_x_to_y" == f"blank_to_{die_val}", f"{die_val}_to_blank", "{die_val}_to_{target_die}"
-    f"BASE\\self_roll" == f"full_roll_{die_val}"
-    """
-    compiled = []
-    from_x_to_y_files = os.listdir(output_dir + "BASE\\from_x_to_y\\")
-    blank_to_x = list(filename for filename in from_x_to_y_files if "blank_to" in filename)
-    for i, char in enumerate(faces):
-        if i == 0:
-            path = list(filename for filename in blank_to_x if f"_{char}" in filename)
-            if not path:
-                print(f'NO PATH FOUND FOR {char} in {output_dir + "BASE\\from_x_to_y\\"}')
-            else:
-                compiled.append(path)
-        else:
-            "do from_x_to_y_files"
 
 def held_and_used():
     """Makes a static image (for now)"""
@@ -576,15 +538,14 @@ def held_and_used():
 
     button_held = "#F8DC5E"
     button_used = "#666354"
-    with Image.open(frame_path + blank_frame) as f_blank:
+    with Image.open(frame_dir + blank_frame) as f_blank:
         frame_no = blank_frame.replace(".png", "")
         for val in "123456":
             char = list(i for i in chars_blanks if i == f"{val}.png")
             if char:
                 char=char[0]
-                #print(f"f_blank open: {filepath}")
 
-            with Image.open(chars_path + char) as im:
+            with Image.open(chars_dir + char) as im:
                 new = Image.new(mode="RGBA", size=f_blank.size)
                 new.paste(f_blank)
                 new.alpha_composite(im)

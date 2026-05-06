@@ -10,8 +10,13 @@ settings_dict = {
         "playstyle": "harpoon",
         "is_singleplayer": True,
         "computer_think_aloud": False,
-        "game_theme": "arcade",
-        "output_file": "farkle_output.json"
+        "output_file": "farkle_output.json",
+        "export_to_file": True,
+        "game_theme": "farkle_arcade",
+        "player_roll_speed": 20,
+        "computer_roll_speed": 20,
+        "roll_on_start": True,
+        "effect_layers": []
     },
     "user_set": {
     }

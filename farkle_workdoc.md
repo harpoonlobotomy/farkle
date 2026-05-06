@@ -296,4 +296,125 @@ Roll automatically< - done. Not just the first roll, but each turn, human player
 Can also set export to json and start rolling immediately via the interface.
 
 9.49pm
-Well, the above in theory - currently it's overwriting the json output each turn. Need to fix that before much else. 
+Well, the above in theory - currently it's overwriting the json output each turn. Need to fix that before much else.
+
+11.54am 6/5/26
+hm. The export is only giving me one player's data, seemingly the winner. The placement for the export lines is far too random to be useful and/or reliable. Working on it.
+
+Oh, one issue: I use players.current.roll_count to track the successive rolls, but it's never updated.
+
+Hm.
+It's not reporting the dice correctly for human players.
+
+       "initial roll": [
+          6,
+          2,
+          3,
+          1,
+          3,
+          5
+        ],
+        "rolls": {
+          "1": {
+            "Dice": [
+              1
+            ],
+
+So 'dice' there should be the same as initial_roll, but it's only giving the held dice.
+
+
+  "rolls": {
+          "0": {
+            "Dice": [
+              6,
+              6,
+              4,
+              4,
+              3,
+              6
+            ]
+          },
+          "1": {
+            "Dice": [
+              6,
+              5,
+              3
+            ]
+          },
+          "2": {
+            "Matches": {
+              "single fives": {
+                "5": {
+                  "1": 50
+                }
+              }
+            },
+            "Roll score": 50
+          }
+        },
+        "turn_end_score": 650,
+        "game_score": 650
+
+Improvement, but... '2' here is inaccurate, there isn't another reroll happening. I must be reporting the scoring after advancing the roll turn.
+
+Okay. The json output seems to be good now; correctly keeps all die rolls, and I decided to label the used ones to make it clearer how the playfield changed over the rolls.
+
+1.18pm
+making a better rules panel.
+right clicking on the rules panel should give you a plaintext version you can print/save.
+
+Fixed the brown used for the navy theme mouseover.
+
+4.20
+Pretty much done now with this version. Only thing I still need to fix is that the computer player still does the pre-reroll when rerolling all.
+4.45pm
+Okay, fixed that.
+
+Next up is the alternate skins/die faces, which should be pretty straightforward all things considered.
+Might remake the rules window as just generated text so it can be resized but will keep the image for the moment.
+
+I don't think I need all the x_to_y gifs. get_roll() uses the base frames and faces directly. I don't think the from_x_to_y is ever used.
+
+Also - can I change hte button colour/text when updating player colour? Currently it stays as the original after you click okay.
+
+Oh, hm. The player colours aren't properly updated.
+Well they are, but:
+ - The settings json isn't updated properly
+ - The new files are added to the existing colour folder
+ - the char stills aren't updated immediately, so it'll roll with the new colour but un-hold with the original.
+ Oh, the folder is generated on the next startup, not immediately. Hm. Okay.
+
+Oh, it crashed after resetting. Potentially because it deleted the "old" player files, but didn't restore to defaults first, so it deleted one of the default dirs.
+
+Oh - and set the font for the roll speed buttons.
+
+ - after restoring defaults, it rolls twice. I don't know why.
+
+OH. Because I've recreated die instances but not wiped the list of die inst. OOOooooh.
+
+Well I fixed that, but it seems every now and then we don't properly see the roll of player2's dice before it busts. Will look more into it. Maybe removed one too many refreshes.
+
+Re: which graphics are actually used: only those in blanks. Even the die_held ones are just generated automatically. Guess I should just go with that instead of generating all at start and then having to check if it's generated throughout. Having them all save to 'temp.gif' helps not clog things up too much. Also means I can modify things (alt die faces etc) without having to rebuild a heap. Hm.
+
+Oh, with the exception of the farkle gifs (those are used pre-made for the intro each time) and the char stills.
+
+So:
+dice_graphics\\blanks\\chars_blanks
+dice_graphics\\blanks\\face_masks
+dice_graphics\\blanks\\frame_blanks
+dice_graphics\\BASE\\self_roll
+dice_graphics\\BASE\\stills
+
+are the only ones needed, I think. Will just clear out the folder and see if it needs anything else.
+
+Do I even need the per-colour?
+Oh, just for the stills.
+
+Oh, it does use held_still/used_still, okay. Will probably phase those out to generate them when I generate player col dice so I can swap faces.
+
+So to swap faces, I just need to exchange 'chars_blanks' for whatever source I have for the primary char pngs. Okay.
+
+7.08pm
+Have laid the groundwork for the effect layers. Have to commit before I actually add it though.
+
+I need to add a thing so it'll generate those stills on its own, so all I need to provide is the 3 blanks files and it'll generate the rest if missing.
