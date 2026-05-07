@@ -427,3 +427,16 @@ Now:
 set max decimals for roll speed and set font.
 9.08pm
 okay, max decimals (.1f) is done, font is done. Autogen is fully working, inc hold and rest.
+
+shiny3 looks terrible but it's a proof of concept.
+
+rotation is approximately tied to die place no, so they're not all identical. Some are because they're only rotated on 90's, but still, it's some variation.
+
+Hm. Well this version, a far more obvious mask, is breaking quite badly. I think maybe the mask is misplaced?
+figure_out_why_brokentemp.gif
+
+Without the mask it does seem to be working as intended. Will need to look at it again tomorrow.
+
+Also I added die fonts to settings, but there are no alternative face fonts yet. Also fixed a couple of tiny issues with the primary blank iamges.
+
+Really should turn the base pngs onto base64s so I can just store them in one file. Would be a good idea. #TODO.

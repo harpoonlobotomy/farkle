@@ -16,7 +16,8 @@ settings_dict = {
         "player_roll_speed": 20,
         "computer_roll_speed": 20,
         "roll_on_start": True,
-        "effect_layers": []
+        "effect_layers": [],
+        "die_face_font": "standard"
     },
     "user_set": {
     }

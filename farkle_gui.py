@@ -1018,12 +1018,12 @@ def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]
         if isinstance(die_inst, str):
             die_inst = dice.get_die_inst(die_inst)
 
-        from make_dice_images import make_combination_image, transition_to_from, button_held, button_used
+        from make_dice_images import make_combination_image, transition_to_from, img as image_class
 
         if die_inst.held:
-                other_colour = button_held
+                other_colour = image_class.button_held
         elif die_inst.used:
-            other_colour = button_used
+            other_colour = image_class.button_used
         else:
             other_colour = players.current.skin
 
@@ -1037,6 +1037,7 @@ def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]
             f_char = str(no_to_farkle[f"die_{die_inst.place_no}"])
             make_other.append(f_char)
             make_other = "".join(make_other)
+            image_class.rotate_counter = die_inst.place_no
             anim_frames = transition_to_from([], outgoing_char=str(char), outgoing_colour=other_colour, incoming_char=f_char, incoming_colour=other_colour, start_roll=False, blank_before_incoming=False,
                         end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, subfolder="random_rolls\\", continue_with_list=True) # runn twice to have it repeat the farkle roll
             transition_to_from(anim_frames, outgoing_char=f_char, outgoing_colour=other_colour, incoming_char=f_char, incoming_colour=other_colour, start_roll=False, blank_before_incoming=False,
@@ -1048,7 +1049,7 @@ def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]
             make_other.append(str(die_inst.value))
             make_other.append(bust_char)
             make_other = "".join(make_other)
-
+            image_class.rotate_counter = die_inst.place_no
             make_combination_image(make_other=make_other, make_other_colour = other_colour, other_subfolder="random_rolls\\", end_blank=False)
 
         elif used or from_held or from_used:
@@ -1056,6 +1057,7 @@ def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]
             make_other.append(str(die_inst.value))
             make_other.append(str(die_inst.value))
             make_other = "".join(make_other)
+            image_class.rotate_counter = die_inst.place_no
             if from_held:
                 #print(f"FROM HELD: {from_held} // {die_inst}")
                 transition_to_from([], outgoing_char=str(die_inst.value), outgoing_colour=button_held, incoming_char=str(die_inst.value), incoming_colour=players.current.skin, start_roll=False, blank_before_incoming=False,
@@ -1087,7 +1089,7 @@ def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]
                 die_inst.value = int(make_other[-1])
 
             make_other = "".join(make_other)
-
+            image_class.rotate_counter = die_inst.place_no
             if die_inst.held or die_inst.used:
                 anim_frames = transition_to_from([], outgoing_char=make_other[0], outgoing_colour=other_colour, incoming_char=make_other[1], incoming_colour=players.current.skin, start_roll=False, blank_before_incoming=False,
                             end_roll=False, output_name = "temp", start_from_blank=False, end_with_blank=False, subfolder="random_rolls\\", continue_with_list=True)
@@ -1097,7 +1099,6 @@ def make_window() -> tuple[str['exit'], None] | tuple[None, str['use_settings']]
             dice.showing_farkle=False
 
         if make_other:
-
             run_gif_anim(target_file, f"die_{die_inst.place_no}")
 
     def hold_dice(die_inst):
@@ -1776,14 +1777,13 @@ def settings_window():
     def set_speed(pc_or_comp):
 
         return [
-        [sg.Text(text=f"The current speed is `{getattr(settings, pc_or_comp)*100:.1f}`.\nClick the die to have it animate at this speed.", key=f"speed_text_{pc_or_comp}")],
-        [sg.Stretch()],
-        test_die(pc_or_comp),
-        [sg.Stretch()],
-        [sg.Input(default_text=f'{getattr(settings, pc_or_comp)*100:.1f}', key=f"speed_input_{pc_or_comp}")],
-        [sg.Ok(key=f"set_input_{pc_or_comp}", bind_return_key=False), sg.Cancel(key=f"cancel_input_{pc_or_comp}")]
-        ]
-
+            [sg.Text(text=f"The current speed is `{getattr(settings, pc_or_comp)*100:.1f}`.\nClick the die to have it animate at this speed.", key=f"speed_text_{pc_or_comp}")],
+            [sg.Stretch()],
+            test_die(pc_or_comp),
+            [sg.Stretch()],
+            [sg.Input(default_text=f'{getattr(settings, pc_or_comp)*100:.1f}', key=f"speed_input_{pc_or_comp}")],
+            [sg.Ok(key=f"set_input_{pc_or_comp}", bind_return_key=False), sg.Cancel(key=f"cancel_input_{pc_or_comp}")]
+            ]
 
     change_speed_buttons = [[sg.VStretch()],
         [sg.VStretch()],
