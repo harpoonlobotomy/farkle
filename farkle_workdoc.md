@@ -440,3 +440,6 @@ Without the mask it does seem to be working as intended. Will need to look at it
 Also I added die fonts to settings, but there are no alternative face fonts yet. Also fixed a couple of tiny issues with the primary blank iamges.
 
 Really should turn the base pngs onto base64s so I can just store them in one file. Would be a good idea. #TODO.
+
+10.35am
+Will work on the base64 this afternoon. Have tried to give it a shot but I'm flying blind today.

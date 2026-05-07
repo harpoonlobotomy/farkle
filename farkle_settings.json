@@ -6,9 +6,18 @@
     "is_singleplayer": true,
     "computer_think_aloud": false,
     "output_file": "farkle_output.json",
+    "export_to_file": true,
     "player1_col": "#5AC280",
     "player2_col": "#5A90C2",
-    "game_theme": "farkle_arcade"
+    "game_theme": "farkle_arcade",
+    "player_roll_speed": 20,
+    "computer_roll_speed": 20,
+    "roll_on_start": true,
+    "effect_layers": [],
+    "die_face_font": "standard"
   },
-  "user_set": {}
+  "user_set": {
+    "player_roll_speed": 70,
+    "computer_roll_speed": 12
+  }
 }

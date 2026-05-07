@@ -1,3 +1,6 @@
+from genericpath import isfile
+
+
 def make_base_64(png_file = r"D:\Git_Repos\farkle\dice_graphics\still\1_still_100px.png", print=False, return_b=False, return_str=True):
 
     import base64
@@ -19,8 +22,11 @@ def auto_make_base64():
 
     import os, json
     base_64_file = r"D:\Git_Repos\farkle\dice_graphics\die_base64.json"
-    with open(base_64_file, "r") as base_64:
-        dictionary = json.load(base_64)
+    if os.path.isfile(base_64_file):
+        with open(base_64_file, "r") as base_64:
+            dictionary = json.load(base_64)
+    else:
+        dictionary = {}
 
     base_dir = os.getcwd() + "\\" + "dice_graphics\\"
     input_folders = os.listdir(base_dir)#[r"D:\Git_Repos\farkle\dice_graphics\BASE\anim", r"D:\Git_Repos\farkle\dice_graphics\BASE\still"]
@@ -47,7 +53,36 @@ def auto_make_base64():
     with open(base_64_file, "w") as base_64:
         json.dump(dictionary, base_64, indent=2)
 
+def show_base64_img():
+    import os, json
+    base_64_file = r"D:\Git_Repos\farkle\dice_graphics\die_base64.json"
+    if os.path.isfile(base_64_file):
+        with open(base_64_file, "r") as base_64:
+            dictionary = json.load(base_64)
+    else:
+        print("No base64 file to open.")
+        return
+
+    from PIL import Image
+    import base64
+    for k, v in dictionary.items():
+        print(f"K: {k} / v: {v}")
+        print(f"v type: {type(v)}")
+        v.encode('utf-8')
+        print(f"v type: {type(v)}")
+        #v = base64.standard_b64decode(v)
+        #image = base64.decodebytes(v)
+
+        #print(f"v type: {type(image)}")
+        #with Image.frombytes("RGBA", (100,100), image) as im:
+        #with Image.open(image) as im:
+        #    im.show()
+        exit()
+
 if __name__ == "__main__":
 
     #make_base_64()
-    auto_make_base64()
+
+    #auto_make_base64()
+
+    show_base64_img()
